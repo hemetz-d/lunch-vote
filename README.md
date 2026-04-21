@@ -1,142 +1,116 @@
 # Lunch Vote
 
-A small office lunch voting tool. Pulls weekly menus from four Vienna restaurants
-(Da Ferdinando, Radatz Ekazent, Noodle King, Restaurant Odysseus) and lets people
-vote on where to go today. Ships as a Microsoft Teams **Personal App** so it can
-be pinned to the left rail next to Chat / Calls.
+Office lunch voting for four restaurants in Vienna — Da Ferdinando, Radatz,
+Noodle King, Odysseus. Weekly menus scraped automatically, one vote per person
+per day, live tally. Embeds as a Teams Personal App pinned to the left rail.
+
+## Architecture
+
+```
+          Browser  ──────────────┐
+  (localhost:8787 · *.workers.dev · Teams tab iframe)
+                                  │
+                      same origin · HTTPS
+                                  ▼
+  ┌──────────────────────────────────────────────────────────┐
+  │  Cloudflare Worker  (workers/src/index.ts)               │
+  │                                                          │
+  │    GET  /              → pages/ (static assets)          │
+  │    GET  /api/today     → menus + tally for today         │
+  │    POST /api/vote      → one vote / user / day (upsert)  │
+  │    POST /api/refresh   → fetch all four sources now      │
+  │    scheduled()         → Mon 06:00 UTC + Tue–Fri retry   │
+  │                                                          │
+  └───┬─────────────────┬──────────────────────────┬─────────┘
+      │                 │                          │
+      ▼                 ▼                          ▼
+  ┌───────┐    ┌─────────────────┐    ┌────────────────────────┐
+  │  D1   │    │  R2 PDF cache   │    │   MenuSource fetchers  │
+  │       │    │                 │    │                        │
+  │ menus │    │  (weekly PDFs,  │    │  ferdinando  ──▶ PDF   │
+  │ votes │    │  so a retry     │    │  radatz      ──▶ HTML  │
+  │ stat. │    │  doesn't refetch│    │  odysseus  ──▶ HTML+PDF│
+  └───────┘    └─────────────────┘    │  noodle-king ──▶ static│
+                                      └────────────┬───────────┘
+                                                   │
+                                                   ▼
+                                       daferdinando.at · radatz.at
+                                       restaurant-odysseus.at
+```
 
 ## Layout
 
 ```
-workers/   Cloudflare Worker — API + weekly cron + serves pages/ as static assets
-pages/     Static frontend (plain HTML/JS, no build step)
+workers/   Worker — API + cron + serves pages/ as static assets
+pages/     Frontend — plain HTML + vanilla JS, no build step
 teams/     Teams Personal App manifest (sideloadable zip)
 ```
 
-## Stack
+## Run locally
 
-- **Cloudflare Workers** for API + cron — free tier, built-in HTTPS, native cron.
-- **Cloudflare D1** for menus & votes — free tier SQLite.
-- **Cloudflare R2** for cached PDFs — free tier object store.
-- **Worker `[assets]` binding** serves the static frontend on the same origin —
-  no separate Pages project, no CORS.
-- **unpdf** for Workers-compatible PDF text extraction.
-- No framework on the frontend — plain HTML + vanilla JS.
-
-## Run it locally in 30 seconds
-
-No Cloudflare account needed. `wrangler dev` serves everything on one port via
-Miniflare — the API, the D1 database (local SQLite file under `.wrangler/`),
-the R2 bucket (local folder), **and** the static frontend.
+No Cloudflare account needed — `wrangler dev` simulates D1, R2, cron, and
+static-asset serving on one port via Miniflare.
 
 ```bash
 cd workers
 npm install
-npm run migrate:local     # creates the SQLite file and seeds the restaurants table
-npm run dev               # starts http://localhost:8787
+npm run migrate:local   # creates the local SQLite file
+npm run dev             # http://localhost:8787
 ```
 
-Then, in another terminal, populate today's menus once:
+Open <http://localhost:8787>, enter a name, and click **Refresh menus** to
+populate today's options. Open a second browser (or incognito) to simulate a
+second voter — different `localStorage` means a different identity.
 
-```bash
-curl -X POST -H "x-admin-secret: dev-secret" http://localhost:8787/api/refresh
-```
-
-Open <http://localhost:8787/> in a browser, enter a name, and vote. For a second
-"user," open an incognito window — different `localStorage` → different identity.
-The tally refreshes every 10s.
-
-Iterating on a source parser? Rerun just that one:
-
-```bash
-curl -X POST -H "x-admin-secret: dev-secret" http://localhost:8787/api/refresh/ferdinando
-```
-
-Inspect the local DB directly:
-
-```bash
-npx wrangler d1 execute lunch_vote --local --command "SELECT * FROM source_status"
-npx wrangler d1 execute lunch_vote --local --command "SELECT restaurant_id, date, substr(options_json,1,80) FROM menus"
-```
-
-Run the tests:
-
-```bash
-npm test
-```
-
-## Deploying to Cloudflare
+## Deploy
 
 ```bash
 cd workers
 npx wrangler login
 
-# Create the D1 database — copy the printed database_id into wrangler.toml,
-# replacing the all-zeros placeholder.
 npx wrangler d1 create lunch_vote
+# paste the printed database_id into wrangler.toml (replaces the all-zeros line)
 
-# Create the R2 bucket.
 npx wrangler r2 bucket create lunch-vote-pdf-cache
-
-# Apply the schema remotely.
 npm run migrate:remote
-
-# Set the admin secret used by POST /api/refresh.
-npx wrangler secret put ADMIN_SECRET
-
-# Deploy — the [assets] binding in wrangler.toml uploads pages/ alongside the Worker,
-# so the whole app ships in one deploy on one origin. No separate Pages project needed.
 npm run deploy
 ```
 
-The deployed URL (e.g. `https://lunch-vote.<your-subdomain>.workers.dev`) is
-what you put into [teams/manifest.json](teams/manifest.json): replace
-`lunch-vote.pages.dev` in `developer.websiteUrl`, the `staticTabs[0]` URLs,
-and `validDomains`. Also replace `id` with a fresh GUID (`uuidgen` or
-<https://www.uuidgenerator.net/>).
+The deploy prints a URL like `https://lunch-vote.<your-subdomain>.workers.dev` —
+that's the whole app, frontend and API on one origin.
 
-## Teams sideload
+## Teams Personal App
 
-1. Drop real icons into `teams/icons/color.png` (192×192) and `teams/icons/outline.png`
-   (32×32 white silhouette on transparent).
-2. Zip the contents of `teams/` (not the folder itself):
-   ```bash
-   cd teams && zip -r ../lunch-vote-teams.zip manifest.json icons/
-   ```
-3. Upload at <https://dev.teams.microsoft.com/apps> → **Import app** → pick the zip.
-4. Click **Preview in Teams** → install as a personal app → right-click the app icon
-   in the left rail → **Pin**.
+1. Drop real icons into `teams/icons/color.png` (192×192) and `outline.png`
+   (32×32, white silhouette on transparent).
+2. In `teams/manifest.json`, replace `lunch-vote.pages.dev` with your
+   deployed URL and generate a fresh GUID for `id`.
+3. Zip the manifest + icons, upload at <https://dev.teams.microsoft.com/apps>,
+   click **Preview in Teams**, right-click the app in the left rail → **Pin**.
 
-If your tenant blocks custom app upload, the admin can add the app via the Teams
-Admin Center, or you can fall back to distributing the Pages URL as a bookmark.
+Tenant policy may block custom app upload — fall back to sharing the
+Workers URL as a browser bookmark.
 
-## V1 scope
+## Sources
 
-In:
-- 4 restaurants (Ferdinando, Radatz, Noodle King, Odysseus).
-- Today-only voting page with live tally (10s polling).
-- Cookie + localStorage identity (first-visit name prompt).
-- Teams Personal App manifest.
-- Monday 06:00 UTC cron + Tue–Fri retry; manual refresh endpoint.
+| id            | URL                                                                          | Parser                         |
+| ------------- | ---------------------------------------------------------------------------- | ------------------------------ |
+| `ferdinando`  | [daferdinando.at/menue-1](https://www.daferdinando.at/menue-1)               | weekly PDF, 3 options/day      |
+| `radatz`      | [radatz.at/wochenkarte/…ekazent-hietzing](https://www.radatz.at/wochenkarte/fleischerei-radatz-ekazent-hietzing-wien) | weekly HTML, variable options  |
+| `odysseus`    | [restaurant-odysseus.at/menu](https://restaurant-odysseus.at/menu/)          | weekly PDF, 3 options/day      |
+| `noodle-king` | —                                                                            | static config                  |
 
-Out (deferred):
-- Teams SSO via AAD.
-- Vote cutoff time.
-- Vote history / reporting.
-- Admin UI for adding restaurants.
-- LLM fallback parsing.
-- Notifications / daily channel post.
+Each voting card shows a **View original ↗** link back to the source so
+users can sanity-check against the real menu if a parser gets something
+wrong. To tune a parser, grab a real fetch into `workers/test/fixtures/`
+and mirror the test file structure (see `ferdinando.test.ts`).
 
-## Tuning sources
+## Tests
 
-Only the Ferdinando parser is validated against a real sample. Once the Worker
-runs a real fetch for Radatz and Odysseus, check `source_status` in D1 and the
-stored `menus.options_json`. If the parsed output is off, iterate on:
+```bash
+cd workers
+npm test
+```
 
-- `workers/src/sources/radatz.ts` — `parseRadatzHtml` heuristics (the Radatz page
-  HTML layout was unknown at implementation time).
-- `workers/src/sources/odysseus.ts` — `parseDayBlock` in particular; the Odysseus
-  PDF layout was likewise unknown.
-
-Both expose their parsing functions for direct unit testing — drop a real fetch
-into `workers/test/fixtures/` and add a test file mirroring `ferdinando.test.ts`.
+The Ferdinando and Odysseus tests run `unpdf` against real saved PDFs;
+the Radatz test runs against saved HTML. 14 tests, all fixture-based.
