@@ -12,7 +12,8 @@
     "teams:icons": "node ../scripts/generate-icons.mjs",
     "teams:zip": "node ../scripts/build-teams-zip.mjs",
     "teams:build": "npm run teams:icons && npm run teams:zip",
-    "seed:demo": "node ../scripts/seed-demo-data.mjs"
+    "seed:demo": "node ../scripts/seed-demo-data.mjs",
+    "reset": "node ../scripts/reset.mjs"
   },
   "dependencies": {
     "unpdf": "^0.12.1"

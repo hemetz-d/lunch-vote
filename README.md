@@ -121,4 +121,19 @@ npm test
 ```
 
 The Ferdinando and Odysseus tests run `unpdf` against real saved PDFs;
-the Radatz test runs against saved HTML. 14 tests, all fixture-based.
+the Radatz test runs against saved HTML. All fixture-based.
+
+## Resetting data
+
+Three scopes, local by default, add `--remote` to hit the deployed D1.
+Restaurants, menus, and source health are never touched.
+
+```bash
+cd workers
+npm run reset -- --today          # clear today's votes + notes
+npm run reset -- --all            # wipe all votes/notes/users
+npm run reset -- --demo           # remove rows seeded by scripts/seed-demo-data.mjs
+
+npm run reset -- --today --remote # same, against production
+npm run reset -- --all --remote --yes  # skip the interactive "yes" prompt
+```
