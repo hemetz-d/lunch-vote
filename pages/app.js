@@ -31,6 +31,18 @@
   refreshBtn.addEventListener("click", manualRefresh);
   noteForm.addEventListener("submit", submitNote);
 
+  // Theme persistence. The inline <head> script already applied whatever was
+  // in localStorage before first paint; here we just sync the <select> to it
+  // and handle changes.
+  const themeSelect = document.getElementById("theme-select");
+  themeSelect.value = localStorage.getItem("lunch-vote-theme") || "default";
+  themeSelect.addEventListener("change", e => {
+    const t = e.target.value;
+    if (t === "default") delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = t;
+    localStorage.setItem("lunch-vote-theme", t);
+  });
+
   function getUser() {
     try { return JSON.parse(localStorage.getItem("lunch-vote-user") || "null"); } catch { return null; }
   }

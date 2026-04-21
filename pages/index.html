@@ -11,6 +11,14 @@
 <link rel="manifest" href="/manifest.webmanifest" />
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
 <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png" />
+<script>
+  // Apply the saved theme before the stylesheet renders, to avoid a flash
+  // of the default palette on every page load.
+  try {
+    const t = localStorage.getItem("lunch-vote-theme");
+    if (t && t !== "default") document.documentElement.dataset.theme = t;
+  } catch {}
+</script>
 <style>
   :root {
     --bg: #f6f7f9;
@@ -128,6 +136,150 @@
   }
   footer button.refresh:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
   footer button.refresh:disabled { opacity: 0.6; cursor: default; }
+  #theme-select {
+    font-size: 13px; padding: 4px 6px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--card); color: var(--ink);
+    font-family: inherit; cursor: pointer;
+  }
+
+  /* ============= THEME: Midnight Diner ============= */
+  html[data-theme="midnight"] {
+    --bg: #0f0f1a;
+    --card: #1a1a2e;
+    --ink: #e8e9fb;
+    --muted: #8a8b9e;
+    --accent: #ff5e9c;
+    --accent-soft: #2a1a3a;
+    --border: #2f2f4a;
+  }
+  html[data-theme="midnight"] header { border-bottom-color: #2f2f4a; }
+  html[data-theme="midnight"] .card.voted { box-shadow: 0 0 14px rgba(255, 94, 156, 0.35); }
+  html[data-theme="midnight"] .card.winning {
+    border-color: #ffd93d;
+    box-shadow: 0 0 16px rgba(255, 217, 61, 0.4);
+  }
+  html[data-theme="midnight"] .card.winning .trophy { background: #ffd93d; color: #1a1a2e; }
+  html[data-theme="midnight"] button.vote { box-shadow: 0 0 10px rgba(255, 94, 156, 0.5); }
+  html[data-theme="midnight"] .banner.nudge { background: #2a1a3a; color: #ff5e9c; }
+  html[data-theme="midnight"] header h1 { text-shadow: 0 0 8px rgba(255, 94, 156, 0.4); }
+
+  /* ============= THEME: Retro Terminal ============= */
+  html[data-theme="terminal"] {
+    --bg: #000;
+    --card: #0a0a0a;
+    --ink: #00ff41;
+    --muted: #009925;
+    --accent: #00ff41;
+    --accent-soft: rgba(0, 255, 65, 0.1);
+    --border: #00ff41;
+  }
+  html[data-theme="terminal"] body { font-family: "Consolas", "Courier New", monospace; }
+  html[data-theme="terminal"] header, html[data-theme="terminal"] .card,
+  html[data-theme="terminal"] section.notes .thread,
+  html[data-theme="terminal"] #theme-select,
+  html[data-theme="terminal"] button.vote,
+  html[data-theme="terminal"] section.notes input[type="text"],
+  html[data-theme="terminal"] section.notes button,
+  html[data-theme="terminal"] footer button.refresh,
+  html[data-theme="terminal"] #name-modal .box,
+  html[data-theme="terminal"] #name-modal input,
+  html[data-theme="terminal"] #name-modal button {
+    border-radius: 0;
+  }
+  html[data-theme="terminal"] .card {
+    border-style: dashed; border-width: 1px; box-shadow: none;
+  }
+  html[data-theme="terminal"] .card.voted,
+  html[data-theme="terminal"] .card.winning { border-style: solid; }
+  html[data-theme="terminal"] .card.winning { border-color: #ffff41; }
+  html[data-theme="terminal"] .card.winning .trophy { background: #ffff41; color: #000; }
+  html[data-theme="terminal"] header h1::before { content: "> "; }
+  html[data-theme="terminal"] button.vote {
+    background: #00ff41; color: #000; font-family: inherit; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  html[data-theme="terminal"] button.vote.voted { background: var(--accent-soft); color: #00ff41; }
+  html[data-theme="terminal"] section.notes input[type="text"],
+  html[data-theme="terminal"] #name-modal input {
+    background: #000; color: #00ff41; font-family: inherit;
+  }
+  html[data-theme="terminal"] section.notes button,
+  html[data-theme="terminal"] #name-modal button {
+    background: #00ff41; color: #000; font-family: inherit; text-transform: uppercase;
+  }
+  html[data-theme="terminal"] footer button.refresh {
+    font-family: inherit; border-color: #00ff41;
+  }
+  html[data-theme="terminal"] .banner.nudge { background: rgba(0, 255, 65, 0.12); color: #00ff41; }
+
+  /* ============= THEME: 90s Geocities ============= */
+  html[data-theme="geocities"] {
+    --bg: #000014;
+    --card: #ffff00;
+    --ink: #000;
+    --muted: #333;
+    --accent: #ff00ff;
+    --accent-soft: #ffb8ff;
+    --border: #00ffff;
+  }
+  html[data-theme="geocities"] body {
+    font-family: "Comic Sans MS", "Chalkboard", cursive;
+    background-image:
+      radial-gradient(circle at 20% 30%, #fff 0, transparent 1.5px),
+      radial-gradient(circle at 80% 70%, #fff 0, transparent 1.5px),
+      radial-gradient(circle at 40% 90%, #fff 0, transparent 1.5px),
+      radial-gradient(circle at 60% 10%, #fff 0, transparent 1.5px),
+      radial-gradient(circle at 10% 80%, #fff 0, transparent 1.5px);
+    background-size: 100px 100px, 120px 120px, 80px 80px, 90px 90px, 110px 110px;
+    color: #fff;
+  }
+  html[data-theme="geocities"] header {
+    background: linear-gradient(90deg, #ff00ff, #00ffff, #ffff00, #ff00ff);
+    background-size: 400% 100%;
+    animation: gc-rainbow 4s linear infinite;
+    color: #000; border-bottom: 3px solid #fff;
+  }
+  @keyframes gc-rainbow { 0% { background-position: 0% 0; } 100% { background-position: 400% 0; } }
+  html[data-theme="geocities"] header h1 {
+    text-shadow: 2px 2px 0 #fff, 4px 4px 0 #000; font-weight: 900;
+  }
+  html[data-theme="geocities"] header .date { color: #000; font-weight: 600; }
+  html[data-theme="geocities"] .card {
+    border: 3px solid var(--border); border-radius: 0;
+    box-shadow: 6px 6px 0 #ff00ff;
+  }
+  html[data-theme="geocities"] .card.winning {
+    border-color: #ffff00;
+    box-shadow: 6px 6px 0 #00ff00, 0 0 24px #ffff00;
+  }
+  html[data-theme="geocities"] .card.winning .trophy { background: #ff00ff; color: #fff; }
+  html[data-theme="geocities"] .tally { animation: gc-blink 1s steps(2) infinite; }
+  @keyframes gc-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0.3; } }
+  html[data-theme="geocities"] button.vote {
+    background: linear-gradient(180deg, #ff6ed8, #ff00ff);
+    border: 3px outset #ffb8ff; border-radius: 0;
+    color: #fff; text-transform: uppercase; font-weight: 900;
+    text-shadow: 1px 1px 0 #000;
+  }
+  html[data-theme="geocities"] button.vote:active { border-style: inset; }
+  html[data-theme="geocities"] section.notes h2,
+  html[data-theme="geocities"] .banner { color: #fff; }
+  html[data-theme="geocities"] section.notes .thread {
+    background: #00ffff; border: 3px solid #ff00ff; color: #000;
+  }
+  html[data-theme="geocities"] section.notes .note,
+  html[data-theme="geocities"] section.notes .note .author,
+  html[data-theme="geocities"] section.notes .empty { color: #000; }
+  html[data-theme="geocities"] footer { color: #fff; }
+  html[data-theme="geocities"] footer button.refresh {
+    background: #ff00ff; color: #fff; border: 2px outset #ffb8ff;
+    border-radius: 0; font-weight: 700;
+  }
+  html[data-theme="geocities"] #theme-select {
+    background: #ffff00; color: #000; border: 2px solid #ff00ff; border-radius: 0;
+    font-weight: 700;
+  }
+
   #name-modal {
     position: fixed; inset: 0; background: rgba(0,0,0,0.35);
     display: flex; align-items: center; justify-content: center; padding: 20px;
@@ -151,6 +303,12 @@
   <div class="who">
     <span id="who"></span>
     <button id="change-name">change</button>
+    <select id="theme-select" aria-label="Theme">
+      <option value="default">Default</option>
+      <option value="midnight">🌃 Midnight Diner</option>
+      <option value="terminal">💾 Retro Terminal</option>
+      <option value="geocities">✨ 90s Geocities</option>
+    </select>
   </div>
 </header>
 <div id="banner" class="banner" hidden></div>
