@@ -7,6 +7,8 @@
   const params = new URLSearchParams(location.search);
   const API = params.get("api") || location.origin;
   const REFRESH_MS = 10_000;
+  const STALE_MS = 2.5 * 24 * 60 * 60 * 1000;  // > 2.5 days since last fetch → stale badge
+  let autoRefreshed = false;                    // fire the empty-state self-heal once per page load
 
   const nameModal = document.getElementById("name-modal");
   const whoEl = document.getElementById("who");
@@ -63,6 +65,22 @@
       lastData = await res.json();
       render(lastData);
       footerEl.textContent = `Last updated ${new Date().toLocaleTimeString()}. Refreshes every 10s.`;
+
+      // Self-heal: if every restaurant is menu-less, fire a one-time refresh.
+      const allEmpty = lastData.restaurants.every(r => r.options.length === 0);
+      if (allEmpty && !autoRefreshed) {
+        autoRefreshed = true;
+        footerEl.textContent = "No menus yet — fetching now…";
+        try {
+          await fetch(`${API}/api/refresh`, { method: "POST" });
+          const res2 = await fetch(`${API}/api/today`, { headers: { "x-user-id": user.id, "x-user-name": user.name } });
+          if (res2.ok) {
+            lastData = await res2.json();
+            render(lastData);
+            footerEl.textContent = `Last updated ${new Date().toLocaleTimeString()}.`;
+          }
+        } catch {}
+      }
     } catch (err) {
       footerEl.textContent = `Error: ${err.message}`;
     }
@@ -147,12 +165,27 @@
   }
 
   function render(data) {
-    dateEl.textContent = formatDate(data.date);
+    dateEl.textContent = formatDate(data.date)
+      + (data.previewing ? " · next Monday preview" : "");
     renderNotes(data.notes);
     mainEl.innerHTML = "";
+
+    const maxVotes = Math.max(0, ...data.restaurants.map(r => r.votes));
+    const hasWinner = maxVotes > 0;
+
     for (const r of data.restaurants) {
+      const isWinner = hasWinner && r.votes === maxVotes;
+      const classes = ["card"];
+      if (data.myVote === r.id) classes.push("voted");
+      if (isWinner) classes.push("winning");
       const card = document.createElement("div");
-      card.className = "card" + (data.myVote === r.id ? " voted" : "");
+      card.className = classes.join(" ");
+      if (isWinner) {
+        const trophy = document.createElement("span");
+        trophy.className = "trophy";
+        trophy.textContent = "🏆 leading";
+        card.appendChild(trophy);
+      }
       const title = document.createElement("h2");
       const titleRow = `<span class="title-row">`
         + `<span>${escape(r.name)}</span>`
@@ -161,6 +194,18 @@
       title.innerHTML = titleRow
         + `<span class="tally">${r.votes} vote${r.votes === 1 ? "" : "s"}</span>`;
       card.appendChild(title);
+
+      if (r.lastError) {
+        const s = document.createElement("div");
+        s.className = "status error";
+        s.textContent = `⚠ Couldn't fetch: ${r.lastError}`;
+        card.appendChild(s);
+      } else if (r.lastFetchedAt && Date.now() - r.lastFetchedAt > STALE_MS) {
+        const s = document.createElement("div");
+        s.className = "status stale";
+        s.textContent = `Menu last updated ${Math.floor((Date.now() - r.lastFetchedAt) / 86400000)} days ago — might be stale`;
+        card.appendChild(s);
+      }
 
       if (r.voters && r.voters.length > 0) {
         const votersEl = document.createElement("div");

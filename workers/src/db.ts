@@ -7,6 +7,8 @@ export type TodayForRestaurant = {
   options: Option[];
   votes: number;
   voters: string[];          // display names in vote order (earliest first)
+  lastFetchedAt?: number;    // ms epoch — null if the source has never succeeded
+  lastError?: string;        // most recent fetch error, if any
 };
 
 export async function listRestaurants(env: Env): Promise<RestaurantRow[]> {
@@ -59,6 +61,9 @@ export async function getToday(env: Env, isoDate: string): Promise<TodayForResta
   )
     .bind(isoDate)
     .all();
+  const { results: statusRows } = await env.DB.prepare(
+    "SELECT source_id, last_fetched_at, last_error FROM source_status"
+  ).all();
 
   const menusByRestaurant = new Map<string, Option[]>();
   for (const r of menuRows as unknown as { restaurant_id: string; options_json: string }[]) {
@@ -74,15 +79,25 @@ export async function getToday(env: Env, isoDate: string): Promise<TodayForResta
     list.push(v.name ?? "anonymous");
     votersByRestaurant.set(v.restaurant_id, list);
   }
+  const statusBySource = new Map<string, { lastFetchedAt?: number; lastError?: string }>();
+  for (const s of statusRows as unknown as { source_id: string; last_fetched_at: number | null; last_error: string | null }[]) {
+    statusBySource.set(s.source_id, {
+      lastFetchedAt: s.last_fetched_at ?? undefined,
+      lastError: s.last_error ?? undefined,
+    });
+  }
 
   return restaurants.map(r => {
     const voters = votersByRestaurant.get(r.id) ?? [];
+    const status = statusBySource.get(r.source_id) ?? {};
     return {
       id: r.id,
       name: r.name,
       options: menusByRestaurant.get(r.id) ?? [],
       votes: voters.length,
       voters,
+      lastFetchedAt: status.lastFetchedAt,
+      lastError: status.lastError,
     };
   });
 }

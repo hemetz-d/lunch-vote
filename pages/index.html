@@ -26,6 +26,7 @@
   }
   header h1 { font-size: 18px; margin: 0; }
   header .date { color: var(--muted); font-size: 14px; }
+  header .preview-note { color: var(--accent); font-size: 13px; font-weight: 500; }
   .who {
     display: flex; align-items: center; gap: 8px; font-size: 14px;
   }
@@ -35,9 +36,19 @@
   main { padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; max-width: 1100px; margin: 0 auto; }
   .card {
     background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px;
-    display: flex; flex-direction: column; gap: 10px;
+    display: flex; flex-direction: column; gap: 10px; position: relative;
   }
   .card.voted { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+  .card.winning { border-color: #e0b84b; box-shadow: 0 0 0 2px rgba(224, 184, 75, 0.25); }
+  .card .trophy {
+    position: absolute; top: -10px; right: 12px; background: #e0b84b; color: #fff;
+    font-size: 12px; padding: 2px 8px; border-radius: 10px; font-weight: 500;
+  }
+  .card .status {
+    font-size: 12px; padding: 4px 8px; border-radius: 6px; align-self: flex-start;
+  }
+  .card .status.error { background: #fbe9e9; color: #8f2424; }
+  .card .status.stale { background: #fdf4d3; color: #8a6a1b; }
   .card h2 { margin: 0; font-size: 16px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
   .card h2 .title-row { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   .card h2 a.menu-link { font-size: 12px; font-weight: 400; color: var(--muted); text-decoration: none; }

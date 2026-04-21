@@ -30,3 +30,17 @@ export function weekdayDates(d: Date): string[] {
 export function germanDay(i: number): string {
   return DAYS[(i + 1) % 7]; // 0 -> Montag, 4 -> Freitag
 }
+
+// The date the app should show and act on. Monday–Friday → today. Sat/Sun →
+// the upcoming Monday, so the weekend preview shows next week's menu and any
+// votes/notes cast on the weekend go into Monday's pool.
+export function viewingDate(now: Date): string {
+  const dow = now.getUTCDay();  // 0 = Sun, 6 = Sat
+  if (dow === 0 || dow === 6) {
+    const daysUntilMonday = dow === 0 ? 1 : 2;
+    const d = new Date(now);
+    d.setUTCDate(d.getUTCDate() + daysUntilMonday);
+    return isoDate(d);
+  }
+  return isoDate(now);
+}

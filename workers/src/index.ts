@@ -1,5 +1,5 @@
 import type { Env, MenuSource } from "./types.js";
-import { isoDate } from "./dates.js";
+import { isoDate, viewingDate } from "./dates.js";
 import {
   listRestaurants,
   storeWeeklyMenu,
@@ -37,19 +37,27 @@ export default {
 
     try {
       if (url.pathname === "/api/today" && req.method === "GET") {
-        const today = isoDate(new Date());
+        const now = new Date();
+        const today = isoDate(now);
+        const viewing = viewingDate(now);
         const userId = req.headers.get("x-user-id") ?? "";
         const userName = req.headers.get("x-user-name") ?? "";
         if (userId && userName) await upsertUser(env, userId, userName);
-        const restaurants = await getToday(env, today);
+        const restaurants = await getToday(env, viewing);
         const sourceById = new Map(SOURCES.map(s => [s.id, s]));
         const enriched = restaurants.map(r => ({
           ...r,
           menuUrl: sourceById.get(r.id)?.menuUrl,
         }));
-        const myVote = userId ? await getMyVote(env, today, userId) : null;
-        const notes = await listNotes(env, today);
-        return json({ date: today, restaurants: enriched, myVote, notes });
+        const myVote = userId ? await getMyVote(env, viewing, userId) : null;
+        const notes = await listNotes(env, viewing);
+        return json({
+          date: viewing,
+          previewing: viewing !== today,
+          restaurants: enriched,
+          myVote,
+          notes,
+        });
       }
 
       if (url.pathname === "/api/note" && req.method === "POST") {
@@ -59,7 +67,7 @@ export default {
         if (userName) await upsertUser(env, userId, userName);
         const body = (await req.json().catch(() => ({}))) as { body?: string };
         if (!body.body || !body.body.trim()) return json({ error: "missing body" }, 400);
-        await addNote(env, isoDate(new Date()), userId, body.body);
+        await addNote(env, viewingDate(new Date()), userId, body.body);
         return json({ ok: true });
       }
 
@@ -74,8 +82,8 @@ export default {
         if (!restaurants.some(r => r.id === body.restaurant_id)) {
           return json({ error: "unknown restaurant" }, 400);
         }
-        const today = isoDate(new Date());
-        await castVote(env, today, userId, body.restaurant_id);
+        const voteDate = viewingDate(new Date());
+        await castVote(env, voteDate, userId, body.restaurant_id);
         return json({ ok: true });
       }
 
