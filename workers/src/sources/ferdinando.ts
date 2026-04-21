@@ -10,7 +10,7 @@ export class FerdinandoSource implements MenuSource {
   menuUrl = PDF_URL;
 
   async fetchWeekly(env: SourceEnv): Promise<WeeklyMenu> {
-    const buf = await fetchPdfBytes(PDF_URL, env);
+    const buf = await fetchPdfBytes(PDF_URL);
     const text = await extractPdfText(buf);
     const dates = weekdayDates(env.now ?? new Date());
     return {
@@ -99,7 +99,7 @@ function splitNameAndDescription(raw: string): { name: string; description?: str
   return { name, description: description || undefined };
 }
 
-async function fetchPdfBytes(url: string, env: SourceEnv): Promise<Uint8Array> {
+async function fetchPdfBytes(url: string): Promise<Uint8Array> {
   // If the URL is the HTML menu page, find the PDF link inside it first.
   const res = await fetch(url);
   const ct = res.headers.get("content-type") ?? "";
@@ -112,10 +112,7 @@ async function fetchPdfBytes(url: string, env: SourceEnv): Promise<Uint8Array> {
   const pdfUrl = new URL(m[1], url).toString();
   const pdfRes = await fetch(pdfUrl);
   if (!pdfRes.ok) throw new Error(`ferdinando: PDF fetch ${pdfRes.status}`);
-  const bytes = new Uint8Array(await pdfRes.arrayBuffer());
-  // Best-effort cache so a re-run doesn't refetch.
-  try { await env.PDF_CACHE.put(`ferdinando/${new Date().toISOString().slice(0, 10)}.pdf`, bytes); } catch {}
-  return bytes;
+  return new Uint8Array(await pdfRes.arrayBuffer());
 }
 
 async function extractPdfText(bytes: Uint8Array): Promise<string> {

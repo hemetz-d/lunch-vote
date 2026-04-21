@@ -9,7 +9,7 @@ export class OdysseusSource implements MenuSource {
 
   async fetchWeekly(env: SourceEnv): Promise<WeeklyMenu> {
     const pdfUrl = await findCurrentPdfUrl(MENU_PAGE);
-    const bytes = await fetchAndCachePdf(pdfUrl, env);
+    const bytes = await fetchPdfBytes(pdfUrl);
     const text = await extractPdfText(bytes);
     const dates = weekdayDates(env.now ?? new Date());
     return {
@@ -84,17 +84,10 @@ async function findCurrentPdfUrl(pageUrl: string): Promise<string> {
   return matches.sort().reverse()[0];
 }
 
-async function fetchAndCachePdf(url: string, env: SourceEnv): Promise<Uint8Array> {
-  const key = `odysseus/${new URL(url).pathname.split("/").pop()}`;
-  try {
-    const cached = await env.PDF_CACHE.get(key);
-    if (cached) return new Uint8Array(await cached.arrayBuffer());
-  } catch {}
+async function fetchPdfBytes(url: string): Promise<Uint8Array> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`odysseus: PDF fetch ${res.status}`);
-  const bytes = new Uint8Array(await res.arrayBuffer());
-  try { await env.PDF_CACHE.put(key, bytes); } catch {}
-  return bytes;
+  return new Uint8Array(await res.arrayBuffer());
 }
 
 async function extractPdfText(bytes: Uint8Array): Promise<string> {

@@ -93,7 +93,7 @@ async function runSources(env: Env, sources: MenuSource[]) {
       continue;
     }
     try {
-      const menu = await withRetry(() => src.fetchWeekly({ PDF_CACHE: env.PDF_CACHE }), 3);
+      const menu = await withRetry(() => src.fetchWeekly({}), 3);
       await storeWeeklyMenu(env, restaurant.id, menu);
       await recordSourceSuccess(env, src.id);
       report[src.id] = { ok: true, days: menu.days.length };

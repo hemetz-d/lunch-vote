@@ -24,13 +24,11 @@ export interface MenuSource {
 }
 
 export type SourceEnv = {
-  PDF_CACHE: R2Bucket;
   // Fixed "now" for deterministic testing.
   now?: Date;
 };
 
 export type Env = {
   DB: D1Database;
-  PDF_CACHE: R2Bucket;
   ADMIN_SECRET: string;
 };

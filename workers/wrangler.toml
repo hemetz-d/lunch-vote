@@ -15,14 +15,8 @@ crons = ["0 6 * * 1", "0 6 * * 2-5"]
 [[d1_databases]]
 binding = "DB"
 database_name = "lunch_vote"
-# Placeholder UUID — wrangler only validates format for `--local` dev. Replace with the
-# real ID from `npx wrangler d1 create lunch_vote` before deploying to Cloudflare.
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "94b66f88-d06b-4167-ba94-fcf2e6a54ac4"
 migrations_dir = "migrations"
-
-[[r2_buckets]]
-binding = "PDF_CACHE"
-bucket_name = "lunch-vote-pdf-cache"
 
 [vars]
 ADMIN_SECRET = "dev-secret"

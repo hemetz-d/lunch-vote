@@ -21,21 +21,21 @@ per day, live tally. Embeds as a Teams Personal App pinned to the left rail.
   │    POST /api/refresh   → fetch all four sources now      │
   │    scheduled()         → Mon 06:00 UTC + Tue–Fri retry   │
   │                                                          │
-  └───┬─────────────────┬──────────────────────────┬─────────┘
-      │                 │                          │
-      ▼                 ▼                          ▼
-  ┌───────┐    ┌─────────────────┐    ┌────────────────────────┐
-  │  D1   │    │  R2 PDF cache   │    │   MenuSource fetchers  │
-  │       │    │                 │    │                        │
-  │ menus │    │  (weekly PDFs,  │    │  ferdinando  ──▶ PDF   │
-  │ votes │    │  so a retry     │    │  radatz      ──▶ HTML  │
-  │ stat. │    │  doesn't refetch│    │  odysseus  ──▶ HTML+PDF│
-  └───────┘    └─────────────────┘    │  noodle-king ──▶ static│
-                                      └────────────┬───────────┘
-                                                   │
-                                                   ▼
-                                       daferdinando.at · radatz.at
-                                       restaurant-odysseus.at
+  └───┬──────────────────────────────────────────┬─────────┘
+      │                                          │
+      ▼                                          ▼
+  ┌──────────────┐                 ┌────────────────────────────┐
+  │  D1 (SQLite) │                 │   MenuSource fetchers      │
+  │              │                 │                            │
+  │  menus       │                 │   ferdinando  ──▶ PDF      │
+  │  votes       │                 │   radatz      ──▶ HTML     │
+  │  restaurants │                 │   odysseus    ──▶ HTML+PDF │
+  │  status      │                 │   noodle-king ──▶ static   │
+  └──────────────┘                 └────────────┬───────────────┘
+                                                │
+                                                ▼
+                                    daferdinando.at · radatz.at
+                                    restaurant-odysseus.at
 ```
 
 ## Layout
@@ -48,7 +48,7 @@ teams/     Teams Personal App manifest (sideloadable zip)
 
 ## Run locally
 
-No Cloudflare account needed — `wrangler dev` simulates D1, R2, cron, and
+No Cloudflare account needed — `wrangler dev` simulates D1, cron, and
 static-asset serving on one port via Miniflare.
 
 ```bash
@@ -69,9 +69,8 @@ cd workers
 npx wrangler login
 
 npx wrangler d1 create lunch_vote
-# paste the printed database_id into wrangler.toml (replaces the all-zeros line)
+# paste the printed database_id into wrangler.toml
 
-npx wrangler r2 bucket create lunch-vote-pdf-cache
 npm run migrate:remote
 npm run deploy
 ```
