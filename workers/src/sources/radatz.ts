@@ -20,38 +20,64 @@ export class RadatzSource implements MenuSource {
   }
 }
 
-// Exported for tests. The Radatz page layout is HTML-based but unknown at
-// implementation time — we use a robust day-header + text-segment approach:
-// strip tags, split on weekday headers, then treat the rest as one option per day.
+// Exported for tests. The Radatz weekly page renders each day as:
+//   Montag, 20.04.
+//   <dish name with allergen codes like (A,G)>
+//   <price like "8,9">
+//   <next dish name>
+//   <next price>
+//   ...
+//   Dienstag, 21.04.
+//   ...
+// We strip tags, locate each day header, and pair up (dish, price) lines.
+// Terminators mark the end of a day block without being emitted as days themselves
+// (e.g. "Samstag, 25.04.", or the "Saisonale Empfehlung" seasonal offerings section).
+const TERMINATORS = ["Samstag", "Sonntag"];
+
 export function parseRadatzHtml(html: string, dates: string[]): DayMenu[] {
   const text = htmlToText(html);
-  const positions: { day: string; index: number }[] = [];
-  for (const day of DAYS_DE) {
-    const re = new RegExp(`(?:^|\\W)${day}(?=\\W|$)`, "i");
-    const m = re.exec(text);
-    if (m) positions.push({ day, index: m.index + m[0].toLowerCase().indexOf(day.toLowerCase()) });
+  const allDayWords = [...DAYS_DE, ...TERMINATORS].join("|");
+  const headerRe = new RegExp(`(${allDayWords}),\\s*\\d{1,2}\\.\\s*\\d{1,2}\\.`, "g");
+  const headers: { day: string; index: number; end: number }[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = headerRe.exec(text)) !== null) {
+    headers.push({ day: m[1], index: m.index, end: m.index + m[0].length });
   }
-  positions.sort((a, b) => a.index - b.index);
+  // "Saisonale Empfehlung" also marks the end of the weekly menu on pages where
+  // Saturday is absent.
+  const seasonal = /\bSaisonale\s+Empfehlung\b/i.exec(text);
+  if (seasonal) headers.push({ day: "Saisonale", index: seasonal.index, end: seasonal.index });
 
   return DAYS_DE.map((day, i) => {
-    const pos = positions.find(p => p.day === day);
-    if (!pos) return { date: dates[i] ?? "", options: [] };
-    const nextIdx = positions.filter(p => p.index > pos.index).map(p => p.index).sort((a, b) => a - b)[0];
-    const slice = text.slice(pos.index + day.length, nextIdx ?? text.length).trim();
-    // Keep slice short: stop at 600 chars or the first double-newline, whichever first.
-    const trimmed = slice.slice(0, 600).split(/\n{2,}/)[0].trim();
-    return { date: dates[i] ?? "", options: splitOptions(trimmed) };
+    const here = headers.find(h => h.day === day);
+    if (!here) return { date: dates[i] ?? "", options: [] };
+    const next = headers.find(h => h.index > here.index);
+    const block = text.slice(here.end, next?.index ?? text.length);
+    return { date: dates[i] ?? "", options: parseDayBlock(block) };
   });
 }
 
-function splitOptions(block: string): Option[] {
-  // Radatz often lists items separated by " | " or newlines.
-  const parts = block
-    .split(/\s*[|•]\s*|\n+/)
-    .map(s => s.trim())
-    .filter(s => s.length > 2 && s.length < 200);
-  if (parts.length === 0) return block.trim() ? [{ name: block.trim() }] : [];
-  return parts.map(name => ({ name }));
+const PRICE_LINE = /^\s*(\d{1,2})[,.](\d{1,2})(?:\s+\d+g)?\s*$/;
+
+function parseDayBlock(block: string): Option[] {
+  const lines = block.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+  const options: Option[] = [];
+  let pendingName: string | null = null;
+  for (const line of lines) {
+    const priceMatch = PRICE_LINE.exec(line);
+    if (priceMatch && pendingName) {
+      const euros = Number(priceMatch[1]);
+      const cents = Number(priceMatch[2].padEnd(2, "0")); // "3,5" -> 3.50
+      options.push({ name: pendingName, price: euros + cents / 100 });
+      pendingName = null;
+    } else if (!priceMatch) {
+      // Two consecutive non-price lines: treat the earlier one as a priceless option.
+      if (pendingName) options.push({ name: pendingName });
+      pendingName = line;
+    }
+  }
+  if (pendingName) options.push({ name: pendingName });
+  return options;
 }
 
 function htmlToText(html: string): string {
@@ -59,7 +85,7 @@ function htmlToText(html: string): string {
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
     .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/(p|div|li|h[1-6]|tr)>/gi, "\n")
+    .replace(/<\/(p|div|li|h[1-6]|tr|td)>/gi, "\n")
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
@@ -69,5 +95,6 @@ function htmlToText(html: string): string {
     .replace(/&#39;/g, "'")
     .replace(/[ \t]+/g, " ")
     .replace(/\n[ \t]+/g, "\n")
+    .replace(/\n{2,}/g, "\n")
     .trim();
 }

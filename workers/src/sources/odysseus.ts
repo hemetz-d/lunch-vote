@@ -2,7 +2,6 @@ import type { MenuSource, WeeklyMenu, DayMenu, Option, SourceEnv } from "../type
 import { weekdayDates } from "../dates.js";
 
 const MENU_PAGE = "https://restaurant-odysseus.at/menu/";
-const DAYS_DE = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"] as const;
 
 export class OdysseusSource implements MenuSource {
   id = "odysseus";
@@ -19,59 +18,68 @@ export class OdysseusSource implements MenuSource {
   }
 }
 
-// Exported for tests.
+// Exported for tests. The Odysseus lunch PDF is a 5-column x 4-row grid:
+//
+//     MONTAG    DIENSTAG  MITTWOCH  DONNERSTAG FREITAG
+//     <soup5-per-day, no prices>
+//     <meat Mon> 12,50 <meat Tue> 12,50 ... <meat Fri> 12,50
+//     <veg Mon>  11,50 <veg Tue>  11,50 ... <veg Fri>  11,50
+//     <fish Mon> 12,50 <fish Tue> 12,50 ... <fish Fri> 12,50
+//
+// unpdf flattens the grid row-by-row into one space-separated string. We locate
+// the header run, strip the footer, and split on price markers. That yields 15
+// (name, price) pairs laid out as 5 days x 3 priced rows. The unpriced soup row
+// in between the headers and the first price is skipped in v1 (no clean way to
+// split 5 soup names without column positions).
 export function parseOdysseusText(text: string, dates: string[]): DayMenu[] {
-  const normalized = text.replace(/\s+/g, " ").trim();
-  const positions: { day: string; index: number }[] = [];
-  for (const day of DAYS_DE) {
-    const re = new RegExp(`(?:^|\\W)${day}(?=\\W|$)`);
-    const m = re.exec(normalized);
-    if (m) positions.push({ day, index: m.index + m[0].indexOf(day) });
-  }
-  positions.sort((a, b) => a.index - b.index);
+  const flat = text.replace(/\s+/g, " ").trim();
+  const headerRe = /MONTAG\s+DIENSTAG\s+MITTWOCH\s+DONNERSTAG\s+FREITAG/i;
+  const headerMatch = headerRe.exec(flat);
+  if (!headerMatch) return emptyDays(dates);
+  const afterHeader = flat.slice(headerMatch.index + headerMatch[0].length);
 
-  return DAYS_DE.map((day, i) => {
-    const pos = positions.find(p => p.day === day);
-    if (!pos) return { date: dates[i] ?? "", options: [] };
-    const nextIdx = positions.filter(p => p.index > pos.index).map(p => p.index).sort((a, b) => a - b)[0];
-    const slice = normalized.slice(pos.index + day.length, nextIdx ?? normalized.length).trim();
-    return { date: dates[i] ?? "", options: parseDayBlock(slice) };
+  // Cut off the footer block (Dessertkombi / Allergen note / MITTAGSMENÜ).
+  const terminator = /[✰*]\s*Dessertkombi|MITTAGSMEN[ÜU]\s+business/i.exec(afterHeader);
+  const body = terminator ? afterHeader.slice(0, terminator.index) : afterHeader;
+
+  // Split on prices. Match both "€12,50" and bare "12,50" or "11,50".
+  const priceRe = /€?\s*(\d{1,2})[,.](\d{2})/g;
+  const pairs: { name: string; price: number }[] = [];
+  let cursor = 0;
+  let m: RegExpExecArray | null;
+  while ((m = priceRe.exec(body)) !== null) {
+    const name = body.slice(cursor, m.index).trim();
+    const price = Number(m[1]) + Number(m[2]) / 100;
+    if (name) pairs.push({ name, price });
+    cursor = priceRe.lastIndex;
+  }
+
+  // Expect 15 pairs (3 rows x 5 days). If we got at least 5, lay them out as a
+  // 5-column grid; extra rows beyond 3 are ignored, missing rows become empty.
+  if (pairs.length < 5) return emptyDays(dates);
+  const rows = Math.floor(pairs.length / 5);
+
+  return Array.from({ length: 5 }, (_, dayIdx) => {
+    const options: Option[] = [];
+    for (let r = 0; r < rows; r++) {
+      const idx = r * 5 + dayIdx;
+      if (idx < pairs.length) options.push(pairs[idx]);
+    }
+    return { date: dates[dayIdx] ?? "", options };
   });
 }
 
-// Heuristic: without a known schema, split the day's text on " oder " (German "or")
-// or on numbered markers, whichever yields >=1 options. Fall back to a single option.
-function parseDayBlock(block: string): Option[] {
-  const markerRe = /(?:^|\s)(\d)\.\s+/g;
-  const markers: { start: number; textStart: number }[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = markerRe.exec(block)) !== null) {
-    markers.push({ start: m.index, textStart: markerRe.lastIndex });
-  }
-  if (markers.length > 0) {
-    const options: Option[] = [];
-    for (let i = 0; i < markers.length; i++) {
-      const end = i + 1 < markers.length ? markers[i + 1].start : block.length;
-      const raw = block.slice(markers[i].textStart, end).trim();
-      if (raw) options.push({ name: raw });
-    }
-    return options;
-  }
-  const byOr = block.split(/\s+oder\s+/i).map(s => s.trim()).filter(Boolean);
-  if (byOr.length > 1) return byOr.map(name => ({ name }));
-  const trimmed = block.trim();
-  return trimmed ? [{ name: trimmed }] : [];
+function emptyDays(dates: string[]): DayMenu[] {
+  return dates.slice(0, 5).map(d => ({ date: d, options: [] }));
 }
 
 async function findCurrentPdfUrl(pageUrl: string): Promise<string> {
   const res = await fetch(pageUrl);
   if (!res.ok) throw new Error(`odysseus: menu page ${res.status}`);
   const html = await res.text();
-  // Look for wp-content/uploads/.../Mittagsmenu*.pdf
   const re = /https?:\/\/[^"']*wp-content\/uploads\/[^"']*Mittagsmen[üu][^"']*\.pdf/gi;
   const matches = html.match(re);
   if (!matches || matches.length === 0) throw new Error("odysseus: no PDF link on menu page");
-  // Pick the most recently dated one: sort by URL (yyyy/mm naturally orders).
   return matches.sort().reverse()[0];
 }
 
