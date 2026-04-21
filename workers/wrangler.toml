@@ -3,6 +3,11 @@ main = "src/index.ts"
 compatibility_date = "2024-11-06"
 compatibility_flags = ["nodejs_compat"]
 
+# Serves the static frontend on the same origin as the API, so no CORS and no ?api= query.
+# Unmatched requests (e.g. /api/*) fall through to the Worker.
+[assets]
+directory = "../pages"
+
 # Monday 06:00 UTC = weekly fetch; Tue-Fri 06:00 UTC = retry fetch for any source missing today's menu.
 [triggers]
 crons = ["0 6 * * 1", "0 6 * * 2-5"]
@@ -10,7 +15,9 @@ crons = ["0 6 * * 1", "0 6 * * 2-5"]
 [[d1_databases]]
 binding = "DB"
 database_name = "lunch_vote"
-database_id = "REPLACE_WITH_D1_ID"
+# Placeholder UUID — wrangler only validates format for `--local` dev. Replace with the
+# real ID from `npx wrangler d1 create lunch_vote` before deploying to Cloudflare.
+database_id = "00000000-0000-0000-0000-000000000000"
 migrations_dir = "migrations"
 
 [[r2_buckets]]
@@ -18,4 +25,4 @@ binding = "PDF_CACHE"
 bucket_name = "lunch-vote-pdf-cache"
 
 [vars]
-ADMIN_SECRET = "change-me-in-wrangler-secret"
+ADMIN_SECRET = "dev-secret"
