@@ -116,6 +116,29 @@ export async function castVote(
     .run();
 }
 
+// Names of users active in the last 7 days who haven't voted for `isoDate`
+// yet. Used to surface "waiting on X, Y" on the frontend. Excludes the
+// caller — they already see a dedicated "you haven't voted" banner.
+export async function listWaitingOn(
+  env: Env,
+  isoDate: string,
+  excludeUserId: string | null
+): Promise<string[]> {
+  const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const { results } = await env.DB.prepare(
+    `SELECT u.name
+       FROM users u
+      WHERE u.updated_at >= ?
+        AND u.id <> COALESCE(?, '')
+        AND u.id NOT IN (SELECT user_id FROM votes WHERE date = ?)
+      ORDER BY u.updated_at DESC
+      LIMIT 10`
+  )
+    .bind(cutoff, excludeUserId ?? "", isoDate)
+    .all();
+  return (results as unknown as { name: string }[]).map(r => r.name).filter(Boolean);
+}
+
 export async function upsertUser(env: Env, id: string, name: string): Promise<void> {
   const clean = name.trim().slice(0, 80);
   if (!clean) return;

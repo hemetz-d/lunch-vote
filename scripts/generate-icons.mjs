@@ -12,8 +12,10 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ICONS_DIR = join(__dirname, "..", "teams", "icons");
-mkdirSync(ICONS_DIR, { recursive: true });
+const TEAMS_ICONS_DIR = join(__dirname, "..", "teams", "icons");
+const PAGES_ICONS_DIR = join(__dirname, "..", "pages", "icons");
+mkdirSync(TEAMS_ICONS_DIR, { recursive: true });
+mkdirSync(PAGES_ICONS_DIR, { recursive: true });
 
 // -- Minimal PNG encoder ----------------------------------------------------
 // RGBA pixels → PNG buffer. Pure zlib + CRC32, no external dependencies.
@@ -105,35 +107,51 @@ function fillRect(buf, w, h, x0, y0, x1, y1, color) {
   }
 }
 
-// -- Color icon (192×192) --------------------------------------------------
-// Teams purple background, white plate circle, three simple fork tines as bars.
-{
-  const W = 192, H = 192;
+// Draw the plate-on-purple "color" design at an arbitrary size.
+function renderColor(W, H) {
   const purple = [0x5b, 0x5f, 0xc7, 0xff];
   const white = [0xff, 0xff, 0xff, 0xff];
-
   const buf = makeRgba(W, H, purple);
-  fillCircle(buf, W, H, W / 2, H / 2, 66, white);                                    // plate
-  fillCircle(buf, W, H, W / 2, H / 2, 52, purple);                                   // inner
-  fillRect(buf, W, H, W / 2 - 26, H / 2 - 8, W / 2 - 18, H / 2 + 30, white);         // tine 1
-  fillRect(buf, W, H, W / 2 - 4,  H / 2 - 8, W / 2 + 4,  H / 2 + 30, white);         // tine 2
-  fillRect(buf, W, H, W / 2 + 18, H / 2 - 8, W / 2 + 26, H / 2 + 30, white);         // tine 3
-  fillRect(buf, W, H, W / 2 - 26, H / 2 - 16, W / 2 + 26, H / 2 - 8, white);         // handle bar
+  const cx = W / 2, cy = H / 2;
+  const scale = Math.min(W, H) / 192;
+  const R_outer = Math.round(66 * scale);
+  const R_inner = Math.round(52 * scale);
+  const halfW = Math.round(26 * scale);
+  const tineW = Math.round(4 * scale);
+  const tineTop = Math.round(cy - 8 * scale);
+  const tineBottom = Math.round(cy + 30 * scale);
+  const handleTop = Math.round(cy - 16 * scale);
 
-  writeFileSync(join(ICONS_DIR, "color.png"), encodePng(W, H, buf));
-  console.log("wrote teams/icons/color.png   192×192");
+  fillCircle(buf, W, H, cx, cy, R_outer, white);
+  fillCircle(buf, W, H, cx, cy, R_inner, purple);
+  fillRect(buf, W, H, Math.round(cx - halfW), tineTop,       Math.round(cx - halfW + tineW * 2), tineBottom, white);
+  fillRect(buf, W, H, Math.round(cx - tineW), tineTop,       Math.round(cx + tineW),             tineBottom, white);
+  fillRect(buf, W, H, Math.round(cx + halfW - tineW * 2), tineTop, Math.round(cx + halfW),       tineBottom, white);
+  fillRect(buf, W, H, Math.round(cx - halfW), handleTop,     Math.round(cx + halfW),             tineTop, white);
+  return buf;
 }
 
-// -- Outline icon (32×32) --------------------------------------------------
-// White silhouette on transparent — Teams renders this in the left rail.
+// -- Teams color icon (192×192) + outline (32×32) --------------------------
+writeFileSync(join(TEAMS_ICONS_DIR, "color.png"), encodePng(192, 192, renderColor(192, 192)));
+console.log("wrote teams/icons/color.png   192×192");
+
 {
   const W = 32, H = 32;
   const white = [0xff, 0xff, 0xff, 0xff];
   const buf = makeRgba(W, H, [0, 0, 0, 0]);
-
-  fillCircle(buf, W, H, W / 2, H / 2, 12, white);                                    // plate
-  fillCircle(buf, W, H, W / 2, H / 2, 8, [0, 0, 0, 0]);                              // transparent inner
-
-  writeFileSync(join(ICONS_DIR, "outline.png"), encodePng(W, H, buf));
+  fillCircle(buf, W, H, W / 2, H / 2, 12, white);
+  fillCircle(buf, W, H, W / 2, H / 2, 8, [0, 0, 0, 0]);
+  writeFileSync(join(TEAMS_ICONS_DIR, "outline.png"), encodePng(W, H, buf));
   console.log("wrote teams/icons/outline.png 32×32");
 }
+
+// -- PWA icons in pages/icons/ --------------------------------------------
+// 192 and 512 cover Android home-screen / splash, Chrome, iOS. The 512
+// maskable variant uses the same design; safe-zone cropping is handled by
+// the launcher (the design already has enough padding around the glyph).
+for (const size of [192, 512]) {
+  writeFileSync(join(PAGES_ICONS_DIR, `icon-${size}.png`), encodePng(size, size, renderColor(size, size)));
+  console.log(`wrote pages/icons/icon-${size}.png ${size}×${size}`);
+}
+writeFileSync(join(PAGES_ICONS_DIR, "icon-maskable-512.png"), encodePng(512, 512, renderColor(512, 512)));
+console.log("wrote pages/icons/icon-maskable-512.png 512×512 (maskable)");

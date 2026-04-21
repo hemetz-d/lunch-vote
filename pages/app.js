@@ -20,6 +20,7 @@
   const noteForm = document.getElementById("note-form");
   const noteInput = document.getElementById("note-input");
   const noteSubmit = document.getElementById("note-submit");
+  const bannerEl = document.getElementById("banner");
   let lastData = null;
 
   document.getElementById("change-name").addEventListener("click", () => openNameModal());
@@ -146,6 +147,30 @@
     }
   }
 
+  function renderBanner(data) {
+    const haventVoted = !data.myVote;
+    const waiting = data.waitingOn || [];
+    bannerEl.innerHTML = "";
+    if (!haventVoted && waiting.length === 0) { bannerEl.hidden = true; return; }
+    bannerEl.hidden = false;
+    bannerEl.className = "banner" + (haventVoted ? " nudge" : "");
+    if (haventVoted) {
+      const m = document.createElement("span");
+      m.textContent = data.previewing ? "You haven't pre-voted for Monday yet." : "You haven't voted yet today.";
+      bannerEl.appendChild(m);
+    } else {
+      bannerEl.appendChild(document.createElement("span"));
+    }
+    if (waiting.length > 0) {
+      const w = document.createElement("span");
+      w.className = "waiting";
+      const shown = waiting.slice(0, 5);
+      const extra = waiting.length - shown.length;
+      w.textContent = `Still waiting on: ${shown.join(", ")}${extra > 0 ? ` + ${extra} more` : ""}`;
+      bannerEl.appendChild(w);
+    }
+  }
+
   function renderNotes(notes) {
     notesListEl.innerHTML = "";
     if (!notes || notes.length === 0) {
@@ -171,6 +196,7 @@
     dateEl.textContent = formatDate(data.date)
       + (data.previewing ? " · next Monday preview" : "");
     renderNotes(data.notes);
+    renderBanner(data);
     mainEl.innerHTML = "";
 
     const maxVotes = Math.max(0, ...data.restaurants.map(r => r.votes));

@@ -11,6 +11,7 @@ import {
   upsertUser,
   addNote,
   listNotes,
+  listWaitingOn,
 } from "./db.js";
 import { NoodleKingSource } from "./sources/noodle-king.js";
 import { FerdinandoSource } from "./sources/ferdinando.js";
@@ -51,12 +52,14 @@ export default {
         }));
         const myVote = userId ? await getMyVote(env, viewing, userId) : null;
         const notes = await listNotes(env, viewing);
+        const waitingOn = await listWaitingOn(env, viewing, userId || null);
         return json({
           date: viewing,
           previewing: viewing !== today,
           restaurants: enriched,
           myVote,
           notes,
+          waitingOn,
         });
       }
 
@@ -65,6 +68,15 @@ export default {
         if (!userId) return json({ error: "missing x-user-id" }, 400);
         const userName = req.headers.get("x-user-name") ?? "";
         if (userName) await upsertUser(env, userId, userName);
+        // Rate limit: 5 notes per 60 seconds per user.
+        const recent = await env.DB.prepare(
+          "SELECT COUNT(*) AS n FROM notes WHERE user_id = ? AND created_at > ?"
+        )
+          .bind(userId, Date.now() - 60_000)
+          .first<{ n: number }>();
+        if ((recent?.n ?? 0) >= 5) {
+          return json({ error: "too many notes, slow down" }, 429);
+        }
         const body = (await req.json().catch(() => ({}))) as { body?: string };
         if (!body.body || !body.body.trim()) return json({ error: "missing body" }, 400);
         await addNote(env, viewingDate(new Date()), userId, body.body);
@@ -89,12 +101,31 @@ export default {
 
       const refreshMatch = url.pathname.match(/^\/api\/refresh(?:\/([^/]+))?$/);
       if (refreshMatch && req.method === "POST") {
-        // Intentionally unauthenticated: this is an office-internal tool and the
-        // only side effect is fetching four public menu pages. If this ever gets
-        // abused, swap in a rate-limit on source_status.last_fetched_at.
+        // Intentionally unauthenticated: this is an office-internal tool and
+        // the only side effect is fetching public menu pages. Rate-limited
+        // globally so mass spam can't hammer the restaurants' sites: if any
+        // source was fetched within the last 60s, reject with a 429. Serves
+        // as a per-restaurant-site soft limit without per-IP tracking.
         const onlyId = refreshMatch[1];
         const targets = onlyId ? SOURCES.filter(s => s.id === onlyId) : SOURCES;
         if (targets.length === 0) return json({ error: "unknown source" }, 404);
+
+        const ids = targets.map(t => t.id);
+        const placeholders = ids.map(() => "?").join(",");
+        const recent = await env.DB.prepare(
+          `SELECT MAX(last_fetched_at) AS latest FROM source_status WHERE source_id IN (${placeholders})`
+        )
+          .bind(...ids)
+          .first<{ latest: number | null }>();
+        const lastFetch = recent?.latest ?? 0;
+        const sinceMs = Date.now() - lastFetch;
+        if (lastFetch && sinceMs < 60_000) {
+          return json(
+            { error: "refreshed recently, try again later", retryAfter: Math.ceil((60_000 - sinceMs) / 1000) },
+            429
+          );
+        }
+
         const report = await runSources(env, targets);
         return json({ ok: true, report });
       }
