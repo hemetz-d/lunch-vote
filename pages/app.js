@@ -66,9 +66,12 @@
       render(lastData);
       footerEl.textContent = `Last updated ${new Date().toLocaleTimeString()}. Refreshes every 10s.`;
 
-      // Self-heal: if every restaurant is menu-less, fire a one-time refresh.
+      // Self-heal: if every restaurant is menu-less AND we're showing today
+      // (not a weekend preview), fire a one-time refresh. On weekends the
+      // restaurants haven't published next week's menus yet, so refreshing
+      // would be wasted traffic that can't succeed.
       const allEmpty = lastData.restaurants.every(r => r.options.length === 0);
-      if (allEmpty && !autoRefreshed) {
+      if (allEmpty && !autoRefreshed && !lastData.previewing) {
         autoRefreshed = true;
         footerEl.textContent = "No menus yet — fetching now…";
         try {
@@ -219,7 +222,9 @@
       if (r.options.length === 0) {
         const e = document.createElement("div");
         e.className = "empty";
-        e.textContent = "No menu today.";
+        e.textContent = data.previewing
+          ? "Not published yet — usually appears Monday morning."
+          : "No menu today.";
         card.appendChild(e);
       } else {
         const ul = document.createElement("ul");
