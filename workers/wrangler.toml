@@ -1,0 +1,21 @@
+name = "lunch-vote"
+main = "src/index.ts"
+compatibility_date = "2024-11-06"
+compatibility_flags = ["nodejs_compat"]
+
+# Monday 06:00 UTC = weekly fetch; Tue-Fri 06:00 UTC = retry fetch for any source missing today's menu.
+[triggers]
+crons = ["0 6 * * 1", "0 6 * * 2-5"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "lunch_vote"
+database_id = "REPLACE_WITH_D1_ID"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "PDF_CACHE"
+bucket_name = "lunch-vote-pdf-cache"
+
+[vars]
+ADMIN_SECRET = "change-me-in-wrangler-secret"

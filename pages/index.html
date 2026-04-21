@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lunch Vote</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --ink: #1f2328;
+    --muted: #6b7280;
+    --accent: #5b5fc7;       /* Teams purple */
+    --accent-soft: #e8e9fb;
+    --border: #e5e7eb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--ink);
+  }
+  header {
+    padding: 16px 20px; background: var(--card); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  header h1 { font-size: 18px; margin: 0; }
+  header .date { color: var(--muted); font-size: 14px; }
+  .who {
+    display: flex; align-items: center; gap: 8px; font-size: 14px;
+  }
+  .who button {
+    background: none; border: none; color: var(--accent); cursor: pointer; padding: 0; font-size: inherit;
+  }
+  main { padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; max-width: 1100px; margin: 0 auto; }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .card.voted { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+  .card h2 { margin: 0; font-size: 16px; display: flex; justify-content: space-between; align-items: baseline; }
+  .tally { font-size: 13px; color: var(--muted); font-weight: 500; }
+  ul.options { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  ul.options li { font-size: 14px; line-height: 1.35; }
+  ul.options .opt-name { font-weight: 500; }
+  ul.options .opt-desc { color: var(--muted); font-size: 13px; }
+  ul.options .opt-price { color: var(--muted); font-size: 12px; margin-left: 6px; }
+  .empty { color: var(--muted); font-size: 13px; font-style: italic; }
+  button.vote {
+    background: var(--accent); color: #fff; border: none; border-radius: 8px;
+    padding: 8px 12px; font-size: 14px; cursor: pointer; align-self: flex-start;
+  }
+  button.vote.voted { background: var(--accent-soft); color: var(--accent); }
+  button.vote:disabled { opacity: 0.6; cursor: default; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px; }
+  #name-modal {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  #name-modal .box {
+    background: var(--card); border-radius: 12px; padding: 20px; max-width: 320px; width: 100%;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  #name-modal h2 { margin: 0; font-size: 16px; }
+  #name-modal input { font-size: 16px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; }
+  #name-modal button { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 8px 12px; font-size: 14px; cursor: pointer; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>🍝 Lunch Vote</h1>
+    <div class="date" id="date"></div>
+  </div>
+  <div class="who">
+    <span id="who"></span>
+    <button id="change-name">change</button>
+  </div>
+</header>
+<main id="main"></main>
+<footer id="footer">Loading…</footer>
+
+<div id="name-modal" hidden>
+  <div class="box">
+    <h2>What's your name?</h2>
+    <input id="name-input" type="text" placeholder="Jane from Marketing" autocomplete="off" />
+    <button id="name-save">Continue</button>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

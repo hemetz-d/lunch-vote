@@ -1,0 +1,23 @@
+{
+  "name": "lunch-vote-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "migrate:local": "wrangler d1 migrations apply lunch_vote --local",
+    "migrate:remote": "wrangler d1 migrations apply lunch_vote --remote",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "unpdf": "^0.12.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240402.0",
+    "@types/node": "^20.19.39",
+    "typescript": "^5.4.0",
+    "vitest": "^1.4.0",
+    "wrangler": "^3.50.0"
+  }
+}

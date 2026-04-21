@@ -1,0 +1,37 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.17",
+  "version": "1.0.0",
+  "id": "REPLACE-WITH-NEW-GUID",
+  "packageName": "at.example.lunchvote",
+  "developer": {
+    "name": "Lunch Vote",
+    "websiteUrl": "https://lunch-vote.pages.dev",
+    "privacyUrl": "https://lunch-vote.pages.dev/privacy",
+    "termsOfUseUrl": "https://lunch-vote.pages.dev/terms"
+  },
+  "icons": {
+    "color": "icons/color.png",
+    "outline": "icons/outline.png"
+  },
+  "name": {
+    "short": "Lunch Vote",
+    "full": "Office Lunch Vote"
+  },
+  "description": {
+    "short": "Vote on where to go for lunch today.",
+    "full": "Pulls menus from configured restaurants and lets the office vote on where to go for lunch."
+  },
+  "accentColor": "#5B5FC7",
+  "staticTabs": [
+    {
+      "entityId": "vote",
+      "name": "Vote",
+      "contentUrl": "https://lunch-vote.pages.dev/",
+      "websiteUrl": "https://lunch-vote.pages.dev/",
+      "scopes": ["personal"]
+    }
+  ],
+  "permissions": ["identity"],
+  "validDomains": ["lunch-vote.pages.dev"]
+}
