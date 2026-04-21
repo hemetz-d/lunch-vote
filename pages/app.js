@@ -23,7 +23,16 @@
   const bannerEl = document.getElementById("banner");
   const hangryEl = document.getElementById("hangry");
   const confettiRoot = document.getElementById("confetti-root");
+  const decideBtn = document.getElementById("decide-btn");
+  const decideNoteEl = document.getElementById("decide-note");
+  const tiebreakerBtn = document.getElementById("tiebreaker-btn");
+  const rouletteOverlay = document.getElementById("roulette-overlay");
+  const rouletteTitleEl = document.getElementById("roulette-title");
+  const rouletteDisplayEl = document.getElementById("roulette-display");
+  const shameModal = document.getElementById("shame-modal");
+  const shameBodyEl = document.getElementById("shame-body");
   let lastLeaderId;                 // sentinel undefined = haven't rendered yet
+  let currentTiedIds = [];           // updated on each render, used by tie-break button
   let lastData = null;
 
   document.getElementById("change-name").addEventListener("click", () => openNameModal());
@@ -33,6 +42,10 @@
   });
   refreshBtn.addEventListener("click", manualRefresh);
   noteForm.addEventListener("submit", submitNote);
+  decideBtn.addEventListener("click", decideForMe);
+  tiebreakerBtn.addEventListener("click", breakTie);
+  document.getElementById("shame-cancel").addEventListener("click", dismissShame);
+  document.getElementById("shame-confirm").addEventListener("click", confirmShame);
 
   // Theme persistence. The inline <head> script already applied whatever was
   // in localStorage before first paint; here we just sync the <select> to it
@@ -125,6 +138,44 @@
   async function vote(restaurantId) {
     const user = getUser();
     if (!user) { openNameModal(); return; }
+
+    // "Decide for me" lockout — 5 minutes of no takebacks after the roulette.
+    const lockoutUntil = Number(localStorage.getItem("lunch-vote-lockout-until") || 0);
+    if (Date.now() < lockoutUntil) {
+      const mins = Math.ceil((lockoutUntil - Date.now()) / 60_000);
+      alert(`The dice decided — no changes for another ~${mins} min.`);
+      return;
+    }
+
+    // Commit shaming — show a modal before the 4th change of the day.
+    const hadPrevious = lastData?.myVote && lastData.myVote !== restaurantId;
+    const changes = getVoteChanges();
+    if (hadPrevious && changes >= 3) {
+      const nth = changes + 1;
+      const line = nth === 4 ? "This is your 4th change today. Just pick one. 🙄"
+                 : nth === 5 ? "Fifth change. The kitchen will be closed before you're done."
+                 : "At this point, just close the tab.";
+      shameBodyEl.textContent = line;
+      shameModal.hidden = false;
+      pendingShameAction = () => doVote(restaurantId, /*isChange=*/true);
+      return;
+    }
+
+    await doVote(restaurantId, hadPrevious);
+  }
+
+  let pendingShameAction = null;
+  function dismissShame() { shameModal.hidden = true; pendingShameAction = null; }
+  async function confirmShame() {
+    shameModal.hidden = true;
+    const action = pendingShameAction; pendingShameAction = null;
+    if (action) await action();
+  }
+
+  async function doVote(restaurantId, isChange) {
+    const user = getUser();
+    if (!user) return;
+    if (isChange) incrementVoteChanges();
     await fetch(`${API}/api/vote`, {
       method: "POST",
       headers: {
@@ -136,6 +187,64 @@
     });
     refresh();
   }
+
+  function voteChangesKey() {
+    return `lunch-vote-changes-${lastData?.date ?? "unknown"}`;
+  }
+  function getVoteChanges() { return Number(localStorage.getItem(voteChangesKey()) || 0); }
+  function incrementVoteChanges() {
+    localStorage.setItem(voteChangesKey(), String(getVoteChanges() + 1));
+  }
+
+  // Decide for me — roulette overlay picks a random restaurant, then casts
+  // the vote and locks further changes for 5 minutes.
+  async function decideForMe() {
+    const user = getUser();
+    if (!user) { openNameModal(); return; }
+    if (!lastData || lastData.restaurants.length === 0) return;
+    decideBtn.disabled = true;
+
+    const choices = lastData.restaurants;
+    const pick = choices[Math.floor(Math.random() * choices.length)];
+    await playRoulette("Rolling the dice…", choices, pick, "🎯");
+
+    localStorage.setItem("lunch-vote-lockout-until", String(Date.now() + 5 * 60_000));
+    await doVote(pick.id, /*isChange=*/false);
+    // Keep the button disabled until lockout expires (render() re-evaluates).
+  }
+
+  // Tie-breaker spin — advisory only, doesn't change any vote.
+  async function breakTie() {
+    if (currentTiedIds.length < 2 || !lastData) return;
+    const tied = lastData.restaurants.filter(r => currentTiedIds.includes(r.id));
+    const pick = tied[Math.floor(Math.random() * tied.length)];
+    tiebreakerBtn.disabled = true;
+    await playRoulette(`Breaking the ${tied.length}-way tie…`, tied, pick, "🏆");
+    tiebreakerBtn.disabled = false;
+  }
+
+  // Shared roulette animation: cycle names with decelerating delays, then
+  // land on `pick` with a prefix emoji.
+  async function playRoulette(title, choices, pick, prefix) {
+    rouletteTitleEl.textContent = title;
+    rouletteDisplayEl.textContent = "?";
+    rouletteDisplayEl.classList.remove("landed");
+    rouletteOverlay.hidden = false;
+
+    const delays = [60, 60, 60, 80, 110, 150, 210, 300, 420, 560, 740];
+    let cursor = Math.floor(Math.random() * choices.length);
+    for (const d of delays) {
+      rouletteDisplayEl.textContent = choices[cursor % choices.length].name;
+      cursor++;
+      await sleep(d);
+    }
+    rouletteDisplayEl.textContent = `${prefix} ${pick.name}`;
+    rouletteDisplayEl.classList.add("landed");
+    await sleep(1500);
+    rouletteOverlay.hidden = true;
+  }
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
   async function submitNote(e) {
     e.preventDefault();
@@ -218,6 +327,27 @@
     const hasWinner = maxVotes > 0;
     const leaders = data.restaurants.filter(r => r.votes === maxVotes && maxVotes > 0);
     const singleLeaderId = leaders.length === 1 ? leaders[0].id : null;
+
+    // Tie-breaker button visibility: only when 2+ tied at > 0.
+    currentTiedIds = leaders.length >= 2 ? leaders.map(r => r.id) : [];
+    if (currentTiedIds.length >= 2) {
+      tiebreakerBtn.hidden = false;
+      tiebreakerBtn.textContent = `🎰 Break the ${currentTiedIds.length}-way tie`;
+    } else {
+      tiebreakerBtn.hidden = true;
+    }
+
+    // Lockout state on the decide button.
+    const lockoutUntil = Number(localStorage.getItem("lunch-vote-lockout-until") || 0);
+    const lockedOut = Date.now() < lockoutUntil;
+    decideBtn.disabled = lockedOut;
+    if (lockedOut) {
+      const mins = Math.ceil((lockoutUntil - Date.now()) / 60_000);
+      decideNoteEl.hidden = false;
+      decideNoteEl.textContent = `Locked in for ~${mins} min`;
+    } else {
+      decideNoteEl.hidden = true;
+    }
 
     // Confetti on leader change — but not on initial render, and not on ties.
     if (lastLeaderId !== undefined && singleLeaderId && singleLeaderId !== lastLeaderId) {

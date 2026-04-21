@@ -146,6 +146,49 @@
   }
   .banner.nudge { background: var(--accent-soft); color: var(--accent); border-radius: 0; }
   .banner .waiting { color: var(--muted); }
+
+  .decide-bar {
+    max-width: 1100px; margin: 0 auto; padding: 0 16px 12px;
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  }
+  button.decide {
+    background: linear-gradient(135deg, #ff5e9c, #ff9a3d);
+    color: #fff; border: none; border-radius: 10px;
+    padding: 10px 16px; font-size: 14px; font-weight: 600; cursor: pointer;
+    box-shadow: 0 2px 8px rgba(255, 94, 156, 0.35);
+  }
+  button.decide:hover:not(:disabled) { transform: translateY(-1px); }
+  button.decide:disabled { opacity: 0.5; cursor: default; background: var(--muted); box-shadow: none; }
+  button.tiebreaker {
+    background: var(--accent); color: #fff; border: none; border-radius: 10px;
+    padding: 10px 16px; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  .decide-note { color: var(--muted); font-size: 12px; margin-left: 4px; }
+
+  /* Overlay used for the roulette + tie-breaker + shame modal */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000;
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .overlay[hidden] { display: none; }
+  .overlay .box {
+    background: var(--card); color: var(--ink); border-radius: 14px;
+    padding: 24px; max-width: 420px; width: 100%;
+    display: flex; flex-direction: column; gap: 12px; text-align: center;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.25);
+  }
+  .overlay h2 { margin: 0; font-size: 16px; color: var(--muted); font-weight: 500; }
+  .overlay .big {
+    font-size: 28px; font-weight: 700; min-height: 1.3em;
+    transition: transform 0.1s;
+  }
+  .overlay .big.landed { font-size: 32px; color: var(--accent); }
+  .overlay .actions { display: flex; gap: 8px; justify-content: center; margin-top: 6px; }
+  .overlay .actions button {
+    padding: 8px 14px; font-size: 14px; border-radius: 8px; border: none; cursor: pointer;
+  }
+  .overlay .actions button.primary { background: var(--accent); color: #fff; }
+  .overlay .actions button.secondary { background: var(--accent-soft); color: var(--accent); }
   footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; }
   footer button.refresh {
     background: none; border: 1px solid var(--border); color: var(--muted);
@@ -335,6 +378,11 @@
   </div>
 </header>
 <div id="banner" class="banner" hidden></div>
+<div class="decide-bar">
+  <button id="decide-btn" class="decide">🎲 Decide for me</button>
+  <button id="tiebreaker-btn" class="tiebreaker" hidden>🎰 Break the tie</button>
+  <span class="decide-note" id="decide-note" hidden></span>
+</div>
 <main id="main"></main>
 <section class="notes">
   <h2>Notes for today</h2>
@@ -352,6 +400,24 @@
 </footer>
 
 <div id="confetti-root"></div>
+
+<div id="roulette-overlay" class="overlay" hidden>
+  <div class="box">
+    <h2 id="roulette-title">Rolling the dice…</h2>
+    <div id="roulette-display" class="big">?</div>
+  </div>
+</div>
+
+<div id="shame-modal" class="overlay" hidden>
+  <div class="box">
+    <h2>Really?</h2>
+    <div id="shame-body" class="big" style="font-size: 18px; font-weight: 500; line-height: 1.4;"></div>
+    <div class="actions">
+      <button id="shame-cancel" class="secondary">Never mind</button>
+      <button id="shame-confirm" class="primary">Fine, I'm sure</button>
+    </div>
+  </div>
+</div>
 
 <div id="name-modal" hidden>
   <div class="box">
