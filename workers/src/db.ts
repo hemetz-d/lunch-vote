@@ -6,6 +6,7 @@ export type TodayForRestaurant = {
   name: string;
   options: Option[];
   votes: number;
+  voters: string[];          // display names in vote order (earliest first)
 };
 
 export async function listRestaurants(env: Env): Promise<RestaurantRow[]> {
@@ -49,8 +50,12 @@ export async function getToday(env: Env, isoDate: string): Promise<TodayForResta
   )
     .bind(isoDate)
     .all();
-  const { results: voteRows } = await env.DB.prepare(
-    "SELECT restaurant_id, COUNT(*) AS n FROM votes WHERE date = ? GROUP BY restaurant_id"
+  const { results: voterRows } = await env.DB.prepare(
+    `SELECT v.restaurant_id, u.name, v.updated_at
+       FROM votes v
+       LEFT JOIN users u ON u.id = v.user_id
+      WHERE v.date = ?
+      ORDER BY v.updated_at ASC`
   )
     .bind(isoDate)
     .all();
@@ -63,17 +68,23 @@ export async function getToday(env: Env, isoDate: string): Promise<TodayForResta
       menusByRestaurant.set(r.restaurant_id, []);
     }
   }
-  const votesByRestaurant = new Map<string, number>();
-  for (const v of voteRows as unknown as { restaurant_id: string; n: number }[]) {
-    votesByRestaurant.set(v.restaurant_id, Number(v.n));
+  const votersByRestaurant = new Map<string, string[]>();
+  for (const v of voterRows as unknown as { restaurant_id: string; name: string | null }[]) {
+    const list = votersByRestaurant.get(v.restaurant_id) ?? [];
+    list.push(v.name ?? "anonymous");
+    votersByRestaurant.set(v.restaurant_id, list);
   }
 
-  return restaurants.map(r => ({
-    id: r.id,
-    name: r.name,
-    options: menusByRestaurant.get(r.id) ?? [],
-    votes: votesByRestaurant.get(r.id) ?? 0,
-  }));
+  return restaurants.map(r => {
+    const voters = votersByRestaurant.get(r.id) ?? [];
+    return {
+      id: r.id,
+      name: r.name,
+      options: menusByRestaurant.get(r.id) ?? [],
+      votes: voters.length,
+      voters,
+    };
+  });
 }
 
 export async function castVote(
@@ -87,6 +98,17 @@ export async function castVote(
       "ON CONFLICT(date, user_id) DO UPDATE SET restaurant_id = excluded.restaurant_id, updated_at = excluded.updated_at"
   )
     .bind(isoDate, userId, restaurantId, Date.now())
+    .run();
+}
+
+export async function upsertUser(env: Env, id: string, name: string): Promise<void> {
+  const clean = name.trim().slice(0, 80);
+  if (!clean) return;
+  await env.DB.prepare(
+    "INSERT INTO users (id, name, updated_at) VALUES (?, ?, ?) " +
+      "ON CONFLICT(id) DO UPDATE SET name = excluded.name, updated_at = excluded.updated_at"
+  )
+    .bind(id, clean, Date.now())
     .run();
 }
 

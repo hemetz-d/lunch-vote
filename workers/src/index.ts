@@ -8,6 +8,7 @@ import {
   getToday,
   castVote,
   getMyVote,
+  upsertUser,
 } from "./db.js";
 import { NoodleKingSource } from "./sources/noodle-king.js";
 import { FerdinandoSource } from "./sources/ferdinando.js";
@@ -24,7 +25,7 @@ const SOURCES: MenuSource[] = [
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
   "access-control-allow-methods": "GET, POST, OPTIONS",
-  "access-control-allow-headers": "content-type, x-admin-secret, x-user-id",
+  "access-control-allow-headers": "content-type, x-user-id, x-user-name",
 };
 
 export default {
@@ -36,6 +37,8 @@ export default {
       if (url.pathname === "/api/today" && req.method === "GET") {
         const today = isoDate(new Date());
         const userId = req.headers.get("x-user-id") ?? "";
+        const userName = req.headers.get("x-user-name") ?? "";
+        if (userId && userName) await upsertUser(env, userId, userName);
         const restaurants = await getToday(env, today);
         const sourceById = new Map(SOURCES.map(s => [s.id, s]));
         const enriched = restaurants.map(r => ({
@@ -49,6 +52,8 @@ export default {
       if (url.pathname === "/api/vote" && req.method === "POST") {
         const userId = req.headers.get("x-user-id");
         if (!userId) return json({ error: "missing x-user-id" }, 400);
+        const userName = req.headers.get("x-user-name") ?? "";
+        if (userName) await upsertUser(env, userId, userName);
         const body = (await req.json().catch(() => ({}))) as { restaurant_id?: string };
         if (!body.restaurant_id) return json({ error: "missing restaurant_id" }, 400);
         const restaurants = await listRestaurants(env);

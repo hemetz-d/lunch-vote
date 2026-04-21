@@ -51,7 +51,9 @@
     const user = getUser();
     if (!user) { openNameModal(); return; }
     try {
-      const res = await fetch(`${API}/api/today`, { headers: { "x-user-id": user.id } });
+      const res = await fetch(`${API}/api/today`, {
+        headers: { "x-user-id": user.id, "x-user-name": user.name },
+      });
       if (!res.ok) throw new Error(`API ${res.status}`);
       lastData = await res.json();
       render(lastData);
@@ -83,7 +85,11 @@
     if (!user) { openNameModal(); return; }
     await fetch(`${API}/api/vote`, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-user-id": user.id },
+      headers: {
+        "content-type": "application/json",
+        "x-user-id": user.id,
+        "x-user-name": user.name,
+      },
       body: JSON.stringify({ restaurant_id: restaurantId }),
     });
     refresh();
@@ -103,6 +109,15 @@
       title.innerHTML = titleRow
         + `<span class="tally">${r.votes} vote${r.votes === 1 ? "" : "s"}</span>`;
       card.appendChild(title);
+
+      if (r.voters && r.voters.length > 0) {
+        const votersEl = document.createElement("div");
+        votersEl.className = "voters";
+        const shown = r.voters.slice(0, 6);
+        const extra = r.voters.length - shown.length;
+        votersEl.textContent = shown.join(", ") + (extra > 0 ? ` + ${extra} more` : "");
+        card.appendChild(votersEl);
+      }
 
       if (r.options.length === 0) {
         const e = document.createElement("div");
