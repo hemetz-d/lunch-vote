@@ -12,6 +12,8 @@ import {
   addNote,
   listNotes,
   listWaitingOn,
+  listBadges,
+  listLeaderboard,
 } from "./db.js";
 import { NoodleKingSource } from "./sources/noodle-king.js";
 import { FerdinandoSource } from "./sources/ferdinando.js";
@@ -58,6 +60,8 @@ export default {
         const myVote = userId ? await getMyVote(env, viewing, userId) : null;
         const notes = await listNotes(env, viewing);
         const waitingOn = await listWaitingOn(env, viewing, userId || null);
+        const badges = await listBadges(env, viewing);
+        const leaderboard = await listLeaderboard(env, viewing, badges);
         return json({
           date: viewing,
           previewing: viewing !== today,
@@ -66,6 +70,8 @@ export default {
           myVote,
           notes,
           waitingOn,
+          badges,
+          leaderboard,
         });
       }
 

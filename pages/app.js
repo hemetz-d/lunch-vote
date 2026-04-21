@@ -28,6 +28,8 @@
   const tiebreakerBtn = document.getElementById("tiebreaker-btn");
   const protestBtn = document.getElementById("protest-btn");
   const protestVotersEl = document.getElementById("protest-voters");
+  const leaderboardBody = document.getElementById("leaderboard-body");
+  const leaderboardSummary = document.getElementById("leaderboard-summary");
   const rouletteOverlay = document.getElementById("roulette-overlay");
   const rouletteTitleEl = document.getElementById("roulette-title");
   const rouletteDisplayEl = document.getElementById("roulette-display");
@@ -367,11 +369,15 @@
     if (protest.voters.length > 0) {
       const shown = protest.voters.slice(0, 8);
       const extra = protest.voters.length - shown.length;
-      protestVotersEl.textContent = `On the picket line: ${shown.join(", ")}${extra > 0 ? ` + ${extra} more` : ""}`;
+      protestVotersEl.innerHTML = "On the picket line: "
+        + shown.map(v => renderVoter(v, data.badges)).join(", ")
+        + (extra > 0 ? ` + ${extra} more` : "");
       protestVotersEl.hidden = false;
     } else {
       protestVotersEl.hidden = true;
     }
+
+    renderLeaderboard(data.leaderboard || []);
 
     // Confetti on leader change — but not on initial render, and not on ties.
     if (lastLeaderId !== undefined && singleLeaderId && singleLeaderId !== lastLeaderId) {
@@ -420,7 +426,8 @@
         votersEl.className = "voters";
         const shown = r.voters.slice(0, 6);
         const extra = r.voters.length - shown.length;
-        votersEl.textContent = shown.join(", ") + (extra > 0 ? ` + ${extra} more` : "");
+        votersEl.innerHTML = shown.map(v => renderVoter(v, data.badges)).join(", ")
+          + (extra > 0 ? ` + ${extra} more` : "");
         card.appendChild(votersEl);
       }
 
@@ -452,6 +459,48 @@
 
       mainEl.appendChild(card);
     }
+  }
+
+  // Render a voter's display name + any earned badges inline.
+  function renderVoter(name, badgesByName) {
+    const badges = (badgesByName && badgesByName[name]) || [];
+    const badgeStr = badges.length > 0
+      ? ` <span class="voter-badge" title="${escape(badgeTitle(badges))}">${badges.join("")}</span>`
+      : "";
+    return `${escape(name)}${badgeStr}`;
+  }
+  function badgeTitle(badges) {
+    const map = {
+      "🥇": "First vote of the day",
+      "🍝": "Loyalist — same pick 3 times running",
+      "📝": "Scribe — 10+ notes all-time",
+      "👑": "Champion — most votes this week",
+    };
+    return badges.map(b => map[b] || b).join(" · ");
+  }
+
+  function renderLeaderboard(entries) {
+    if (!entries || entries.length === 0) {
+      leaderboardBody.innerHTML = `<p style="color: var(--muted); font-size: 13px; margin: 10px 0 0;">No activity in the last 7 days yet.</p>`;
+      leaderboardSummary.textContent = "Leaderboard (last 7 days)";
+      return;
+    }
+    leaderboardSummary.textContent = `Leaderboard (last 7 days) — ${entries.length} active`;
+    const rows = entries.map((e, i) => `
+      <tr>
+        <td class="rank">${i + 1}.</td>
+        <td>${escape(e.name)}${e.badges.length ? ` <span class="voter-badge">${e.badges.join("")}</span>` : ""}</td>
+        <td class="right">${e.votes} vote${e.votes === 1 ? "" : "s"}</td>
+        <td class="right">${e.notes} note${e.notes === 1 ? "" : "s"}</td>
+      </tr>
+    `).join("");
+    leaderboardBody.innerHTML = `
+      <table>
+        <thead>
+          <tr><th></th><th>Name</th><th class="right">Votes</th><th class="right">Notes</th></tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
   }
 
   // Chef reacts to how the card is doing relative to the pack.

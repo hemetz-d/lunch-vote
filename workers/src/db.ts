@@ -186,6 +186,152 @@ export async function listNotes(env: Env, isoDate: string): Promise<NoteRow[]> {
     .map(r => ({ id: r.id, body: r.body, createdAt: Number(r.createdAt), userName: r.userName ?? "anonymous" }));
 }
 
+// ============================================================================
+// Achievements
+// ============================================================================
+
+export type Badge =
+  | "🥇"   // first vote of the day today
+  | "🍝"   // loyalist: last 3 recorded votes were all the same restaurant
+  | "📝"   // scribe: 10+ notes all-time
+  | "👑"   // champion: most votes in the last 7 days
+  | "🎯";  // committed: voted today without changing (updated_at within a few seconds of today's first vote timestamp — not easy; skip)
+
+// Keyed by display name rather than user_id so the frontend can just look up
+// badges as it renders each voter. Small office → name collisions unlikely;
+// acceptable trade-off for keeping the wire format simple.
+export async function listBadges(env: Env, todayIso: string): Promise<Record<string, string[]>> {
+  const badgesByUser = new Map<string, string[]>();
+  const addBadge = (userId: string, badge: string) => {
+    if (!userId) return;
+    const arr = badgesByUser.get(userId) ?? [];
+    if (!arr.includes(badge)) arr.push(badge);
+    badgesByUser.set(userId, arr);
+  };
+
+  // 🥇 First vote of the day.
+  const first = await env.DB.prepare(
+    "SELECT user_id FROM votes WHERE date = ? AND restaurant_id <> 'protest' ORDER BY updated_at ASC LIMIT 1"
+  )
+    .bind(todayIso)
+    .first<{ user_id: string }>();
+  if (first) addBadge(first.user_id, "🥇");
+
+  // 📝 Scribe — 10+ notes all-time.
+  const { results: scribeRows } = await env.DB.prepare(
+    "SELECT user_id FROM notes GROUP BY user_id HAVING COUNT(*) >= 10"
+  ).all();
+  for (const r of scribeRows as unknown as { user_id: string }[]) addBadge(r.user_id, "📝");
+
+  // 🍝 Loyalist — last 3 recorded votes were for the same restaurant (protest excluded).
+  const { results: voteRows } = await env.DB.prepare(
+    "SELECT user_id, restaurant_id, date FROM votes WHERE restaurant_id <> 'protest' ORDER BY user_id, date DESC"
+  ).all();
+  const historyByUser = new Map<string, string[]>();
+  for (const v of voteRows as unknown as { user_id: string; restaurant_id: string; date: string }[]) {
+    const arr = historyByUser.get(v.user_id) ?? [];
+    arr.push(v.restaurant_id);
+    historyByUser.set(v.user_id, arr);
+  }
+  for (const [uid, history] of historyByUser) {
+    if (history.length >= 3) {
+      const top = history.slice(0, 3);
+      if (top.every(r => r === top[0])) addBadge(uid, "🍝");
+    }
+  }
+
+  // 👑 Champion — most vote rows in the last 7 days (tied users all get it).
+  const weekAgoIso = shiftIsoDate(todayIso, -7);
+  const { results: weekRows } = await env.DB.prepare(
+    "SELECT user_id, COUNT(*) AS n FROM votes WHERE date >= ? AND restaurant_id <> 'protest' GROUP BY user_id ORDER BY n DESC"
+  )
+    .bind(weekAgoIso)
+    .all();
+  const weekCounts = weekRows as unknown as { user_id: string; n: number }[];
+  if (weekCounts.length > 0) {
+    const top = weekCounts[0].n;
+    for (const r of weekCounts) {
+      if (r.n === top && top > 0) addBadge(r.user_id, "👑");
+    }
+  }
+
+  // Resolve user_id → name so the frontend can just key on name.
+  const userIds = Array.from(badgesByUser.keys());
+  if (userIds.length === 0) return {};
+  const placeholders = userIds.map(() => "?").join(",");
+  const { results: nameRows } = await env.DB.prepare(
+    `SELECT id, name FROM users WHERE id IN (${placeholders})`
+  )
+    .bind(...userIds)
+    .all();
+  const nameById = new Map<string, string>();
+  for (const r of nameRows as unknown as { id: string; name: string }[]) nameById.set(r.id, r.name);
+
+  const byName: Record<string, string[]> = {};
+  for (const [uid, badges] of badgesByUser) {
+    const name = nameById.get(uid);
+    if (name) byName[name] = badges;
+  }
+  return byName;
+}
+
+export type LeaderboardEntry = { name: string; votes: number; notes: number; badges: string[] };
+
+export async function listLeaderboard(
+  env: Env,
+  todayIso: string,
+  badges: Record<string, string[]>
+): Promise<LeaderboardEntry[]> {
+  const weekAgoIso = shiftIsoDate(todayIso, -7);
+  const { results: voteRows } = await env.DB.prepare(
+    "SELECT user_id, COUNT(*) AS n FROM votes WHERE date >= ? AND restaurant_id <> 'protest' GROUP BY user_id"
+  )
+    .bind(weekAgoIso)
+    .all();
+  const { results: noteRows } = await env.DB.prepare(
+    "SELECT user_id, COUNT(*) AS n FROM notes WHERE date >= ? GROUP BY user_id"
+  )
+    .bind(weekAgoIso)
+    .all();
+
+  const votesByUser = new Map<string, number>();
+  for (const r of voteRows as unknown as { user_id: string; n: number }[]) votesByUser.set(r.user_id, Number(r.n));
+  const notesByUser = new Map<string, number>();
+  for (const r of noteRows as unknown as { user_id: string; n: number }[]) notesByUser.set(r.user_id, Number(r.n));
+
+  const participantIds = new Set<string>([...votesByUser.keys(), ...notesByUser.keys()]);
+  if (participantIds.size === 0) return [];
+  const idsArr = Array.from(participantIds);
+  const placeholders = idsArr.map(() => "?").join(",");
+  const { results: nameRows } = await env.DB.prepare(
+    `SELECT id, name FROM users WHERE id IN (${placeholders})`
+  )
+    .bind(...idsArr)
+    .all();
+  const nameById = new Map<string, string>();
+  for (const r of nameRows as unknown as { id: string; name: string }[]) nameById.set(r.id, r.name);
+
+  const entries: LeaderboardEntry[] = [];
+  for (const id of participantIds) {
+    const name = nameById.get(id);
+    if (!name) continue;
+    entries.push({
+      name,
+      votes: votesByUser.get(id) ?? 0,
+      notes: notesByUser.get(id) ?? 0,
+      badges: badges[name] ?? [],
+    });
+  }
+  entries.sort((a, b) => b.votes - a.votes || b.notes - a.notes || a.name.localeCompare(b.name));
+  return entries.slice(0, 10);
+}
+
+function shiftIsoDate(iso: string, days: number): string {
+  const d = new Date(iso + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 export async function getMyVote(env: Env, isoDate: string, userId: string): Promise<string | null> {
   const row = await env.DB.prepare(
     "SELECT restaurant_id FROM votes WHERE date = ? AND user_id = ?"
