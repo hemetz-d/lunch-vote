@@ -14,6 +14,10 @@
   const mainEl = document.getElementById("main");
   const footerEl = document.getElementById("footer-status");
   const refreshBtn = document.getElementById("refresh-btn");
+  const notesListEl = document.getElementById("notes-list");
+  const noteForm = document.getElementById("note-form");
+  const noteInput = document.getElementById("note-input");
+  const noteSubmit = document.getElementById("note-submit");
   let lastData = null;
 
   document.getElementById("change-name").addEventListener("click", () => openNameModal());
@@ -22,6 +26,7 @@
     if (e.key === "Enter") saveName();
   });
   refreshBtn.addEventListener("click", manualRefresh);
+  noteForm.addEventListener("submit", submitNote);
 
   function getUser() {
     try { return JSON.parse(localStorage.getItem("lunch-vote-user") || "null"); } catch { return null; }
@@ -95,8 +100,55 @@
     refresh();
   }
 
+  async function submitNote(e) {
+    e.preventDefault();
+    const user = getUser();
+    if (!user) { openNameModal(); return; }
+    const body = noteInput.value.trim();
+    if (!body) return;
+    noteSubmit.disabled = true;
+    try {
+      await fetch(`${API}/api/note`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-user-id": user.id,
+          "x-user-name": user.name,
+        },
+        body: JSON.stringify({ body }),
+      });
+      noteInput.value = "";
+      await refresh();
+    } finally {
+      noteSubmit.disabled = false;
+      noteInput.focus();
+    }
+  }
+
+  function renderNotes(notes) {
+    notesListEl.innerHTML = "";
+    if (!notes || notes.length === 0) {
+      const e = document.createElement("div");
+      e.className = "empty";
+      e.textContent = "No notes yet — first one sets the tone.";
+      notesListEl.appendChild(e);
+      return;
+    }
+    for (const n of notes) {
+      const d = document.createElement("div");
+      d.className = "note";
+      const t = new Date(n.createdAt);
+      const hhmm = `${String(t.getHours()).padStart(2,"0")}:${String(t.getMinutes()).padStart(2,"0")}`;
+      d.innerHTML = `<span class="meta">${hhmm}</span>`
+        + `<span class="author">${escape(n.userName)}:</span> `
+        + `<span>${escape(n.body)}</span>`;
+      notesListEl.appendChild(d);
+    }
+  }
+
   function render(data) {
     dateEl.textContent = formatDate(data.date);
+    renderNotes(data.notes);
     mainEl.innerHTML = "";
     for (const r of data.restaurants) {
       const card = document.createElement("div");

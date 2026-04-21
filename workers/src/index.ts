@@ -9,6 +9,8 @@ import {
   castVote,
   getMyVote,
   upsertUser,
+  addNote,
+  listNotes,
 } from "./db.js";
 import { NoodleKingSource } from "./sources/noodle-king.js";
 import { FerdinandoSource } from "./sources/ferdinando.js";
@@ -46,7 +48,19 @@ export default {
           menuUrl: sourceById.get(r.id)?.menuUrl,
         }));
         const myVote = userId ? await getMyVote(env, today, userId) : null;
-        return json({ date: today, restaurants: enriched, myVote });
+        const notes = await listNotes(env, today);
+        return json({ date: today, restaurants: enriched, myVote, notes });
+      }
+
+      if (url.pathname === "/api/note" && req.method === "POST") {
+        const userId = req.headers.get("x-user-id");
+        if (!userId) return json({ error: "missing x-user-id" }, 400);
+        const userName = req.headers.get("x-user-name") ?? "";
+        if (userName) await upsertUser(env, userId, userName);
+        const body = (await req.json().catch(() => ({}))) as { body?: string };
+        if (!body.body || !body.body.trim()) return json({ error: "missing body" }, 400);
+        await addNote(env, isoDate(new Date()), userId, body.body);
+        return json({ ok: true });
       }
 
       if (url.pathname === "/api/vote" && req.method === "POST") {

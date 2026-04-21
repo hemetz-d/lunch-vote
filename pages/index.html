@@ -56,6 +56,36 @@
   }
   button.vote.voted { background: var(--accent-soft); color: var(--accent); }
   button.vote:disabled { opacity: 0.6; cursor: default; }
+  section.notes {
+    max-width: 1100px; margin: 0 auto; padding: 0 16px 16px;
+  }
+  section.notes h2 {
+    margin: 0 0 8px; font-size: 14px; color: var(--muted); font-weight: 500;
+  }
+  section.notes .thread {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px; display: flex; flex-direction: column; gap: 8px;
+  }
+  section.notes .note {
+    font-size: 13px; line-height: 1.4;
+  }
+  section.notes .note .meta {
+    color: var(--muted); font-size: 12px; margin-right: 6px;
+  }
+  section.notes .note .author { font-weight: 500; color: var(--ink); }
+  section.notes .empty { color: var(--muted); font-size: 13px; font-style: italic; }
+  section.notes form {
+    display: flex; gap: 8px; margin-top: 4px;
+  }
+  section.notes input[type="text"] {
+    flex: 1; font-size: 14px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+    font-family: inherit;
+  }
+  section.notes button {
+    background: var(--accent); color: #fff; border: none; border-radius: 8px;
+    padding: 8px 14px; font-size: 14px; cursor: pointer;
+  }
+  section.notes button:disabled { opacity: 0.6; cursor: default; }
   footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; }
   footer button.refresh {
     background: none; border: 1px solid var(--border); color: var(--muted);
@@ -89,6 +119,16 @@
   </div>
 </header>
 <main id="main"></main>
+<section class="notes">
+  <h2>Notes for today</h2>
+  <div class="thread">
+    <div id="notes-list"></div>
+    <form id="note-form">
+      <input id="note-input" type="text" maxlength="200" placeholder="e.g. we're leaving at 12:30" autocomplete="off" />
+      <button type="submit" id="note-submit">Post</button>
+    </form>
+  </div>
+</section>
 <footer>
   <span id="footer-status">Loading…</span>
   <button class="refresh" id="refresh-btn">Refresh menus</button>

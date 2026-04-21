@@ -112,6 +112,42 @@ export async function upsertUser(env: Env, id: string, name: string): Promise<vo
     .run();
 }
 
+export type NoteRow = {
+  id: string;
+  userName: string;
+  body: string;
+  createdAt: number;
+};
+
+export async function addNote(
+  env: Env,
+  isoDate: string,
+  userId: string,
+  body: string
+): Promise<void> {
+  const clean = body.trim().slice(0, 200);
+  if (!clean) return;
+  await env.DB.prepare(
+    "INSERT INTO notes (id, date, user_id, body, created_at) VALUES (?, ?, ?, ?, ?)"
+  )
+    .bind(crypto.randomUUID(), isoDate, userId, clean, Date.now())
+    .run();
+}
+
+export async function listNotes(env: Env, isoDate: string): Promise<NoteRow[]> {
+  const { results } = await env.DB.prepare(
+    `SELECT n.id, n.body, n.created_at AS createdAt, u.name AS userName
+       FROM notes n
+       LEFT JOIN users u ON u.id = n.user_id
+      WHERE n.date = ?
+      ORDER BY n.created_at ASC`
+  )
+    .bind(isoDate)
+    .all();
+  return (results as unknown as { id: string; body: string; createdAt: number; userName: string | null }[])
+    .map(r => ({ id: r.id, body: r.body, createdAt: Number(r.createdAt), userName: r.userName ?? "anonymous" }));
+}
+
 export async function getMyVote(env: Env, isoDate: string, userId: string): Promise<string | null> {
   const row = await env.DB.prepare(
     "SELECT restaurant_id FROM votes WHERE date = ? AND user_id = ?"
