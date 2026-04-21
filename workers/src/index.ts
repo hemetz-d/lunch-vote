@@ -37,8 +37,13 @@ export default {
         const today = isoDate(new Date());
         const userId = req.headers.get("x-user-id") ?? "";
         const restaurants = await getToday(env, today);
+        const sourceById = new Map(SOURCES.map(s => [s.id, s]));
+        const enriched = restaurants.map(r => ({
+          ...r,
+          menuUrl: sourceById.get(r.id)?.menuUrl,
+        }));
         const myVote = userId ? await getMyVote(env, today, userId) : null;
-        return json({ date: today, restaurants, myVote });
+        return json({ date: today, restaurants: enriched, myVote });
       }
 
       if (url.pathname === "/api/vote" && req.method === "POST") {

@@ -5,6 +5,7 @@ const MENU_PAGE = "https://restaurant-odysseus.at/menu/";
 
 export class OdysseusSource implements MenuSource {
   id = "odysseus";
+  menuUrl = MENU_PAGE;
 
   async fetchWeekly(env: SourceEnv): Promise<WeeklyMenu> {
     const pdfUrl = await findCurrentPdfUrl(MENU_PAGE);

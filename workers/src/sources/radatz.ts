@@ -7,6 +7,7 @@ const DAYS_DE = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"] as c
 
 export class RadatzSource implements MenuSource {
   id = "radatz";
+  menuUrl = WEEKLY_URL;
 
   async fetchWeekly(env: SourceEnv): Promise<WeeklyMenu> {
     const res = await fetch(WEEKLY_URL);

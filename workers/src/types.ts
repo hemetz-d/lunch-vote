@@ -16,6 +16,10 @@ export type WeeklyMenu = {
 
 export interface MenuSource {
   id: string;
+  // Human-readable URL of the original menu page. Rendered as a "View original"
+  // link on each restaurant card so users can sanity-check the parsed output.
+  // Optional because some sources (e.g. Noodle King) don't publish a menu page.
+  menuUrl?: string;
   fetchWeekly(env: SourceEnv): Promise<WeeklyMenu>;
 }
 

@@ -77,7 +77,12 @@
       const card = document.createElement("div");
       card.className = "card" + (data.myVote === r.id ? " voted" : "");
       const title = document.createElement("h2");
-      title.innerHTML = `<span>${escape(r.name)}</span><span class="tally">${r.votes} vote${r.votes === 1 ? "" : "s"}</span>`;
+      const titleRow = `<span class="title-row">`
+        + `<span>${escape(r.name)}</span>`
+        + (r.menuUrl ? `<a class="menu-link" href="${escape(r.menuUrl)}" target="_blank" rel="noopener">View original ↗</a>` : "")
+        + `</span>`;
+      title.innerHTML = titleRow
+        + `<span class="tally">${r.votes} vote${r.votes === 1 ? "" : "s"}</span>`;
       card.appendChild(title);
 
       if (r.options.length === 0) {

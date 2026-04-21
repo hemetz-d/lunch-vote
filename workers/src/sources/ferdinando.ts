@@ -7,6 +7,7 @@ const MENU_PRICES: Record<number, number> = { 1: 13.9, 2: 11.9, 3: 15.9 };
 
 export class FerdinandoSource implements MenuSource {
   id = "ferdinando";
+  menuUrl = PDF_URL;
 
   async fetchWeekly(env: SourceEnv): Promise<WeeklyMenu> {
     const buf = await fetchPdfBytes(PDF_URL, env);
