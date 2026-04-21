@@ -3,7 +3,6 @@
   "manifestVersion": "1.17",
   "version": "1.0.0",
   "id": "d865361d-bc7a-4216-903f-e881c5a0f7f0",
-  "packageName": "at.hemetz.lunchvote",
   "developer": {
     "name": "Lunch Vote",
     "websiteUrl": "https://lunch-vote.hemetz.workers.dev",
