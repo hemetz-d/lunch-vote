@@ -55,7 +55,13 @@
   }
   button.vote.voted { background: var(--accent-soft); color: var(--accent); }
   button.vote:disabled { opacity: 0.6; cursor: default; }
-  footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; }
+  footer button.refresh {
+    background: none; border: 1px solid var(--border); color: var(--muted);
+    border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer;
+  }
+  footer button.refresh:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+  footer button.refresh:disabled { opacity: 0.6; cursor: default; }
   #name-modal {
     position: fixed; inset: 0; background: rgba(0,0,0,0.35);
     display: flex; align-items: center; justify-content: center; padding: 20px;
@@ -82,7 +88,10 @@
   </div>
 </header>
 <main id="main"></main>
-<footer id="footer">Loading…</footer>
+<footer>
+  <span id="footer-status">Loading…</span>
+  <button class="refresh" id="refresh-btn">Refresh menus</button>
+</footer>
 
 <div id="name-modal" hidden>
   <div class="box">

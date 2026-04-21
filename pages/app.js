@@ -12,7 +12,8 @@
   const whoEl = document.getElementById("who");
   const dateEl = document.getElementById("date");
   const mainEl = document.getElementById("main");
-  const footerEl = document.getElementById("footer");
+  const footerEl = document.getElementById("footer-status");
+  const refreshBtn = document.getElementById("refresh-btn");
   let lastData = null;
 
   document.getElementById("change-name").addEventListener("click", () => openNameModal());
@@ -20,6 +21,7 @@
   document.getElementById("name-input").addEventListener("keydown", e => {
     if (e.key === "Enter") saveName();
   });
+  refreshBtn.addEventListener("click", manualRefresh);
 
   function getUser() {
     try { return JSON.parse(localStorage.getItem("lunch-vote-user") || "null"); } catch { return null; }
@@ -56,6 +58,23 @@
       footerEl.textContent = `Last updated ${new Date().toLocaleTimeString()}. Refreshes every 10s.`;
     } catch (err) {
       footerEl.textContent = `Error: ${err.message}`;
+    }
+  }
+
+  async function manualRefresh() {
+    refreshBtn.disabled = true;
+    const orig = refreshBtn.textContent;
+    refreshBtn.textContent = "Refreshing…";
+    footerEl.textContent = "Fetching latest menus…";
+    try {
+      const res = await fetch(`${API}/api/refresh`, { method: "POST" });
+      if (!res.ok) throw new Error(`refresh ${res.status}`);
+      await refresh();
+    } catch (err) {
+      footerEl.textContent = `Refresh failed: ${err.message}`;
+    } finally {
+      refreshBtn.disabled = false;
+      refreshBtn.textContent = orig;
     }
   }
 

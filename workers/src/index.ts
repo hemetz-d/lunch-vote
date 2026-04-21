@@ -62,9 +62,9 @@ export default {
 
       const refreshMatch = url.pathname.match(/^\/api\/refresh(?:\/([^/]+))?$/);
       if (refreshMatch && req.method === "POST") {
-        if (req.headers.get("x-admin-secret") !== env.ADMIN_SECRET) {
-          return json({ error: "unauthorized" }, 401);
-        }
+        // Intentionally unauthenticated: this is an office-internal tool and the
+        // only side effect is fetching four public menu pages. If this ever gets
+        // abused, swap in a rate-limit on source_status.last_fetched_at.
         const onlyId = refreshMatch[1];
         const targets = onlyId ? SOURCES.filter(s => s.id === onlyId) : SOURCES;
         if (targets.length === 0) return json({ error: "unknown source" }, 404);
