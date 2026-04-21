@@ -14,10 +14,14 @@
     "unpdf": "^0.12.1"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20240402.0",
+    "@cloudflare/workers-types": "^4.20260421.1",
     "@types/node": "^20.19.39",
     "typescript": "^5.4.0",
-    "vitest": "^1.4.0",
-    "wrangler": "^3.50.0"
+    "vitest": "^3.2.4",
+    "wrangler": "^4.84.1"
+  },
+  "overrides": {
+    "tar": "^7.5.11",
+    "@mapbox/node-pre-gyp": "^2.0.0"
   }
 }
