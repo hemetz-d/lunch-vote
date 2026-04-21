@@ -26,6 +26,8 @@
   const decideBtn = document.getElementById("decide-btn");
   const decideNoteEl = document.getElementById("decide-note");
   const tiebreakerBtn = document.getElementById("tiebreaker-btn");
+  const protestBtn = document.getElementById("protest-btn");
+  const protestVotersEl = document.getElementById("protest-voters");
   const rouletteOverlay = document.getElementById("roulette-overlay");
   const rouletteTitleEl = document.getElementById("roulette-title");
   const rouletteDisplayEl = document.getElementById("roulette-display");
@@ -44,20 +46,9 @@
   noteForm.addEventListener("submit", submitNote);
   decideBtn.addEventListener("click", decideForMe);
   tiebreakerBtn.addEventListener("click", breakTie);
+  protestBtn.addEventListener("click", toggleProtest);
   document.getElementById("shame-cancel").addEventListener("click", dismissShame);
   document.getElementById("shame-confirm").addEventListener("click", confirmShame);
-
-  // Theme persistence. The inline <head> script already applied whatever was
-  // in localStorage before first paint; here we just sync the <select> to it
-  // and handle changes.
-  const themeSelect = document.getElementById("theme-select");
-  themeSelect.value = localStorage.getItem("lunch-vote-theme") || "default";
-  themeSelect.addEventListener("change", e => {
-    const t = e.target.value;
-    if (t === "default") delete document.documentElement.dataset.theme;
-    else document.documentElement.dataset.theme = t;
-    localStorage.setItem("lunch-vote-theme", t);
-  });
 
   function getUser() {
     try { return JSON.parse(localStorage.getItem("lunch-vote-user") || "null"); } catch { return null; }
@@ -213,6 +204,23 @@
     // Keep the button disabled until lockout expires (render() re-evaluates).
   }
 
+  // Protest vote. Rides on the same one-vote-per-user-per-day rail, so voting
+  // "protest" naturally clears any restaurant vote. Toggling while already
+  // protesting has no local "un-vote" — we just revote for protest (idempotent).
+  async function toggleProtest() {
+    const user = getUser();
+    if (!user) { openNameModal(); return; }
+    if (lastData?.myVote === "protest") {
+      // Already protesting — treat as a no-op with a gentle nudge to vote for
+      // a real option instead.
+      alert("You're already on the picket line. Pick a restaurant to switch.");
+      return;
+    }
+    // Route through the same vote() pipeline so the lockout + shame logic
+    // also applies to protest flips.
+    await vote("protest");
+  }
+
   // Tie-breaker spin — advisory only, doesn't change any vote.
   async function breakTie() {
     if (currentTiedIds.length < 2 || !lastData) return;
@@ -347,6 +355,22 @@
       decideNoteEl.textContent = `Locked in for ~${mins} min`;
     } else {
       decideNoteEl.hidden = true;
+    }
+
+    // Protest button: count + active state + voter list under the bar.
+    const protest = data.protest || { votes: 0, voters: [] };
+    const iAmProtesting = data.myVote === "protest";
+    protestBtn.classList.toggle("active", iAmProtesting);
+    protestBtn.textContent = iAmProtesting
+      ? `🪧 Protesting (${protest.votes})`
+      : `🪧 None of these${protest.votes > 0 ? ` (${protest.votes})` : ""}`;
+    if (protest.voters.length > 0) {
+      const shown = protest.voters.slice(0, 8);
+      const extra = protest.voters.length - shown.length;
+      protestVotersEl.textContent = `On the picket line: ${shown.join(", ")}${extra > 0 ? ` + ${extra} more` : ""}`;
+      protestVotersEl.hidden = false;
+    } else {
+      protestVotersEl.hidden = true;
     }
 
     // Confetti on leader change — but not on initial render, and not on ties.

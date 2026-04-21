@@ -44,19 +44,25 @@ export default {
         const userId = req.headers.get("x-user-id") ?? "";
         const userName = req.headers.get("x-user-name") ?? "";
         if (userId && userName) await upsertUser(env, userId, userName);
-        const restaurants = await getToday(env, viewing);
+        const allRestaurants = await getToday(env, viewing);
         const sourceById = new Map(SOURCES.map(s => [s.id, s]));
-        const enriched = restaurants.map(r => ({
-          ...r,
-          menuUrl: sourceById.get(r.id)?.menuUrl,
-        }));
+        // Peel the "protest" pseudo-restaurant off into its own field so the
+        // frontend doesn't try to render it as a card.
+        const protestRow = allRestaurants.find(r => r.id === "protest");
+        const restaurants = allRestaurants
+          .filter(r => r.id !== "protest")
+          .map(r => ({ ...r, menuUrl: sourceById.get(r.id)?.menuUrl }));
+        const protest = protestRow
+          ? { votes: protestRow.votes, voters: protestRow.voters }
+          : { votes: 0, voters: [] };
         const myVote = userId ? await getMyVote(env, viewing, userId) : null;
         const notes = await listNotes(env, viewing);
         const waitingOn = await listWaitingOn(env, viewing, userId || null);
         return json({
           date: viewing,
           previewing: viewing !== today,
-          restaurants: enriched,
+          restaurants,
+          protest,
           myVote,
           notes,
           waitingOn,
