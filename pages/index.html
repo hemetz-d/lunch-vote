@@ -162,6 +162,10 @@
   html[data-theme="midnight"] button.vote { box-shadow: 0 0 10px rgba(255, 94, 156, 0.5); }
   html[data-theme="midnight"] .banner.nudge { background: #2a1a3a; color: #ff5e9c; }
   html[data-theme="midnight"] header h1 { text-shadow: 0 0 8px rgba(255, 94, 156, 0.4); }
+  html[data-theme="midnight"] section.notes input[type="text"],
+  html[data-theme="midnight"] #name-modal input {
+    background: var(--bg); color: var(--ink);
+  }
 
   /* ============= THEME: Retro Terminal ============= */
   html[data-theme="terminal"] {
@@ -247,7 +251,9 @@
   html[data-theme="geocities"] .card {
     border: 3px solid var(--border); border-radius: 0;
     box-shadow: 6px 6px 0 #ff00ff;
+    color: #000;
   }
+  html[data-theme="geocities"] .card .tally { color: #000; }
   html[data-theme="geocities"] .card.winning {
     border-color: #ffff00;
     box-shadow: 6px 6px 0 #00ff00, 0 0 24px #ffff00;
