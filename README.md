@@ -80,15 +80,24 @@ that's the whole app, frontend and API on one origin.
 
 ## Teams Personal App
 
-1. Drop real icons into `teams/icons/color.png` (192×192) and `outline.png`
-   (32×32, white silhouette on transparent).
-2. In `teams/manifest.json`, replace `lunch-vote.pages.dev` with your
-   deployed URL and generate a fresh GUID for `id`.
-3. Zip the manifest + icons, upload at <https://dev.teams.microsoft.com/apps>,
-   click **Preview in Teams**, right-click the app in the left rail → **Pin**.
+```bash
+cd workers
+npm run teams:build      # regenerates placeholder icons + builds lunch-vote-teams.zip
+```
 
-Tenant policy may block custom app upload — fall back to sharing the
-Workers URL as a browser bookmark.
+Upload `lunch-vote-teams.zip` at <https://dev.teams.microsoft.com/apps> → **Import app** →
+click **Preview in Teams** → install as a personal app → right-click the app
+icon in the left rail → **Pin**.
+
+To customize:
+- Replace `teams/icons/color.png` (192×192) and `outline.png` (32×32 white
+  silhouette on transparent) with real designs, then rerun `npm run teams:zip`.
+- Edit `teams/manifest.json` if the deployed URL changes — the manifest `id`
+  GUID should stay stable across rebuilds so Teams treats them as the same app.
+
+Tenant policy may block custom app upload — if so, ask your Teams admin to
+approve it via the Teams Admin Center, or fall back to sharing the workers.dev
+URL as a browser bookmark.
 
 ## Sources
 

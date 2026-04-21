@@ -2,13 +2,13 @@
   "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
   "manifestVersion": "1.17",
   "version": "1.0.0",
-  "id": "REPLACE-WITH-NEW-GUID",
-  "packageName": "at.example.lunchvote",
+  "id": "d865361d-bc7a-4216-903f-e881c5a0f7f0",
+  "packageName": "at.hemetz.lunchvote",
   "developer": {
     "name": "Lunch Vote",
-    "websiteUrl": "https://lunch-vote.pages.dev",
-    "privacyUrl": "https://lunch-vote.pages.dev/privacy",
-    "termsOfUseUrl": "https://lunch-vote.pages.dev/terms"
+    "websiteUrl": "https://lunch-vote.hemetz.workers.dev",
+    "privacyUrl": "https://lunch-vote.hemetz.workers.dev",
+    "termsOfUseUrl": "https://lunch-vote.hemetz.workers.dev"
   },
   "icons": {
     "color": "icons/color.png",
@@ -27,11 +27,11 @@
     {
       "entityId": "vote",
       "name": "Vote",
-      "contentUrl": "https://lunch-vote.pages.dev/",
-      "websiteUrl": "https://lunch-vote.pages.dev/",
+      "contentUrl": "https://lunch-vote.hemetz.workers.dev/",
+      "websiteUrl": "https://lunch-vote.hemetz.workers.dev/",
       "scopes": ["personal"]
     }
   ],
   "permissions": ["identity"],
-  "validDomains": ["lunch-vote.pages.dev"]
+  "validDomains": ["lunch-vote.hemetz.workers.dev"]
 }
