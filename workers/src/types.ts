@@ -30,5 +30,4 @@ export type SourceEnv = {
 
 export type Env = {
   DB: D1Database;
-  ADMIN_SECRET: string;
 };

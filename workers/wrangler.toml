@@ -17,6 +17,3 @@ binding = "DB"
 database_name = "lunch_vote"
 database_id = "94b66f88-d06b-4167-ba94-fcf2e6a54ac4"
 migrations_dir = "migrations"
-
-[vars]
-ADMIN_SECRET = "dev-secret"
