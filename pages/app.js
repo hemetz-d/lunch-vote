@@ -21,6 +21,9 @@
   const noteInput = document.getElementById("note-input");
   const noteSubmit = document.getElementById("note-submit");
   const bannerEl = document.getElementById("banner");
+  const hangryEl = document.getElementById("hangry");
+  const confettiRoot = document.getElementById("confetti-root");
+  let lastLeaderId;                 // sentinel undefined = haven't rendered yet
   let lastData = null;
 
   document.getElementById("change-name").addEventListener("click", () => openNameModal());
@@ -213,6 +216,14 @@
 
     const maxVotes = Math.max(0, ...data.restaurants.map(r => r.votes));
     const hasWinner = maxVotes > 0;
+    const leaders = data.restaurants.filter(r => r.votes === maxVotes && maxVotes > 0);
+    const singleLeaderId = leaders.length === 1 ? leaders[0].id : null;
+
+    // Confetti on leader change — but not on initial render, and not on ties.
+    if (lastLeaderId !== undefined && singleLeaderId && singleLeaderId !== lastLeaderId) {
+      fireConfetti();
+    }
+    lastLeaderId = singleLeaderId;
 
     for (const r of data.restaurants) {
       const isWinner = hasWinner && r.votes === maxVotes;
@@ -232,7 +243,9 @@
         + `<span>${escape(r.name)}</span>`
         + (r.menuUrl ? `<a class="menu-link" href="${escape(r.menuUrl)}" target="_blank" rel="noopener">View original ↗</a>` : "")
         + `</span>`;
+      const chef = chefEmoji(r.votes, maxVotes, leaders.length);
       title.innerHTML = titleRow
+        + `<span class="chef" title="${chefTitle(r.votes, maxVotes, leaders.length)}">${chef}</span>`
         + `<span class="tally">${r.votes} vote${r.votes === 1 ? "" : "s"}</span>`;
       card.appendChild(title);
 
@@ -287,6 +300,67 @@
     }
   }
 
+  // Chef reacts to how the card is doing relative to the pack.
+  function chefEmoji(votes, maxVotes, numLeaders) {
+    if (maxVotes === 0) return "🧑‍🍳";              // no votes anywhere — neutral
+    if (votes === 0) return "😭";                   // 0 votes but others have some
+    if (votes === maxVotes) return numLeaders === 1 ? "😎" : "🤨";  // leading (tied = suspicious)
+    return "🤔";                                    // middle of the pack
+  }
+  function chefTitle(votes, maxVotes, numLeaders) {
+    if (maxVotes === 0) return "Chef is ready when you are";
+    if (votes === 0) return "Chef is heartbroken";
+    if (votes === maxVotes) return numLeaders === 1 ? "Chef is smug" : "Chef is suspicious of the tie";
+    return "Chef is in the running";
+  }
+
+  // Hangry clock — a face in the header that ages through the morning.
+  // Accepts ?clock=HH (integer or decimal) to force a specific hour for testing.
+  function updateHangryClock() {
+    const override = params.get("clock");
+    const now = new Date();
+    const hm = override !== null ? Number(override) : now.getHours() + now.getMinutes() / 60;
+    const isWeekend = now.getDay() === 0 || now.getDay() === 6;
+    let emoji, title;
+    if (isWeekend && override === null) { emoji = "🛋️"; title = "It's the weekend — relax"; }
+    else if (hm < 9)    { emoji = "😴"; title = "Chef is still asleep"; }
+    else if (hm < 10)   { emoji = "🙂"; title = "Lunch is a while off"; }
+    else if (hm < 11)   { emoji = "😐"; title = "Stomach stirring"; }
+    else if (hm < 11.5) { emoji = "😤"; title = "Getting hangry"; }
+    else if (hm < 12)   { emoji = "😠"; title = "Very hangry — decide!"; }
+    else if (hm < 13)   { emoji = "👹"; title = "Feral. DECIDE."; }
+    else if (hm < 15)   { emoji = "😌"; title = "Post-lunch calm"; }
+    else                { emoji = "😑"; title = "Just an afternoon now"; }
+    if (hangryEl) {
+      hangryEl.textContent = emoji;
+      hangryEl.setAttribute("title", title);
+    }
+  }
+
+  // Confetti burst — inject N colored pieces with randomized drift, let the CSS
+  // animation run them down the viewport, then remove.
+  function fireConfetti() {
+    const COLORS = ["#5B5FC7", "#ff5e9c", "#ffd93d", "#4ac29a", "#f97e5d", "#7ecff1"];
+    const N = 80;
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < N; i++) {
+      const piece = document.createElement("div");
+      piece.className = "confetti-piece";
+      const startX = Math.random() * 100;                   // vw percent
+      const drift  = (Math.random() - 0.5) * 300;           // px lateral drift
+      const delay  = Math.random() * 0.4;                   // stagger
+      const rotate = Math.random() * 360;
+      piece.style.left = `${startX}vw`;
+      piece.style.setProperty("--dx", `${drift}px`);
+      piece.style.animationDelay = `${delay}s`;
+      piece.style.background = COLORS[i % COLORS.length];
+      piece.style.transform = `rotate(${rotate}deg)`;
+      piece.addEventListener("animationend", () => piece.remove());
+      frag.appendChild(piece);
+    }
+    confettiRoot.appendChild(frag);
+  }
+
   function formatDate(iso) {
     const d = new Date(iso + "T00:00:00Z");
     return d.toLocaleDateString(undefined, {
@@ -302,6 +376,8 @@
 
   const user = getUser();
   if (user) whoEl.textContent = user.name;
+  updateHangryClock();
+  setInterval(updateHangryClock, 60_000);
   refresh();
   setInterval(refresh, REFRESH_MS);
 })();
