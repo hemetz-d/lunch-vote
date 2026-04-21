@@ -1,12 +1,19 @@
 import type { MenuSource, WeeklyMenu, Option } from "../types.js";
 import { weekdayDates } from "../dates.js";
 
+// Noodle King doesn't publish a daily menu — they serve the same build-your-own box
+// every day. The two decisions the office actually cares about are noodle vs rice,
+// so surface those as the two options with the protein/sauce choices in the
+// description.
 const STANDARD_OPTIONS: Option[] = [
-  { name: "Pad Thai",        description: "Rice noodles, egg, peanuts, tamarind" },
-  { name: "Pho Bo",          description: "Vietnamese beef noodle soup" },
-  { name: "Ramen",           description: "Japanese wheat-noodle broth" },
-  { name: "Bun Bo Nam Bo",   description: "Cold Vietnamese beef & noodle salad" },
-  { name: "Curry Noodles",   description: "Choice of red / green / yellow curry" },
+  {
+    name: "Noodle Box",
+    description: "Grilled or crispy chicken · teriyaki, sweet chili, or sweet & sour",
+  },
+  {
+    name: "Rice Box",
+    description: "Grilled or crispy chicken · teriyaki, sweet chili, or sweet & sour",
+  },
 ];
 
 export class NoodleKingSource implements MenuSource {
