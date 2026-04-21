@@ -13,7 +13,7 @@ export class OdysseusSource implements MenuSource {
     const text = await extractPdfText(bytes);
     const dates = weekdayDates(env.now ?? new Date());
     return {
-      restaurant: "Restaurant Odysseus",
+      restaurant: "Odysseus",
       days: parseOdysseusText(text, dates),
     };
   }

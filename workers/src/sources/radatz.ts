@@ -15,7 +15,7 @@ export class RadatzSource implements MenuSource {
     const html = await res.text();
     const dates = weekdayDates(env.now ?? new Date());
     return {
-      restaurant: "Radatz Ekazent",
+      restaurant: "Radatz",
       days: parseRadatzHtml(html, dates),
     };
   }
