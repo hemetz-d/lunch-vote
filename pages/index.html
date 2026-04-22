@@ -11,9 +11,18 @@
 <link rel="manifest" href="/manifest.webmanifest" />
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
 <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png" />
+<script>
+  // Apply saved theme preference before the stylesheet evaluates, to avoid
+  // a flash of light mode on reload for dark-preferring users.
+  try {
+    const pref = localStorage.getItem("lunch-vote-theme-pref");
+    if (pref === "light" || pref === "dark") document.documentElement.dataset.theme = pref;
+  } catch {}
+</script>
 <style>
   /* ---------- Design tokens ---------- */
   :root {
+    color-scheme: light;
     --bg: #f7f8fa;
     --card: #ffffff;
     --ink: #1a1d26;
@@ -30,14 +39,75 @@
     --danger-soft: #fbe9eb;
     --warn-soft: #fdf4d3;
     --warn-ink: #8a6a1b;
-    --radius: 12px;
-    --radius-sm: 8px;
+    --alert-bg: linear-gradient(135deg, #fff4e0, #ffe8d1);
+    --alert-ink: #a15d12;
+    --alert-border: #f0c37a;
+    --overlay: rgba(16, 24, 40, 0.48);
     --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
     --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08);
+    --radius: 12px;
+    --radius-sm: 8px;
     --max: 1080px;
     --gap: 16px;
     --gap-lg: 24px;
     --ease: cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  /* Dark palette — applied via system preference unless the user has
+     explicitly chosen light, and via [data-theme="dark"] when they've
+     explicitly chosen dark. */
+  html[data-theme="dark"],
+  html[data-theme="dark"] :root {
+    color-scheme: dark;
+    --bg: #0f1117;
+    --card: #181b23;
+    --ink: #e4e7ec;
+    --muted: #9ba3b0;
+    --faint: #656c78;
+    --accent: #8a90f4;
+    --accent-hover: #a2a7f7;
+    --accent-soft: #1e2138;
+    --winner: #e0b84b;
+    --winner-soft: #2a2416;
+    --border: #262a33;
+    --border-strong: #343945;
+    --danger: #e07777;
+    --danger-soft: #2e1a1a;
+    --warn-soft: #2a2411;
+    --warn-ink: #d4b668;
+    --alert-bg: linear-gradient(135deg, #2a220f, #35291b);
+    --alert-ink: #e0b37a;
+    --alert-border: #5c4420;
+    --overlay: rgba(0, 0, 0, 0.65);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+  @media (prefers-color-scheme: dark) {
+    html:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0f1117;
+      --card: #181b23;
+      --ink: #e4e7ec;
+      --muted: #9ba3b0;
+      --faint: #656c78;
+      --accent: #8a90f4;
+      --accent-hover: #a2a7f7;
+      --accent-soft: #1e2138;
+      --winner: #e0b84b;
+      --winner-soft: #2a2416;
+      --border: #262a33;
+      --border-strong: #343945;
+      --danger: #e07777;
+      --danger-soft: #2e1a1a;
+      --warn-soft: #2a2411;
+      --warn-ink: #d4b668;
+      --alert-bg: linear-gradient(135deg, #2a220f, #35291b);
+      --alert-ink: #e0b37a;
+      --alert-border: #5c4420;
+      --overlay: rgba(0, 0, 0, 0.65);
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
+      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
   }
 
   * { box-sizing: border-box; }
@@ -91,6 +161,14 @@
     color: var(--accent); cursor: pointer; font-size: inherit;
   }
   .linky:hover { color: var(--accent-hover); text-decoration: underline; }
+  .theme-toggle {
+    background: none; border: 1px solid var(--border); color: var(--muted);
+    border-radius: 999px; width: 28px; height: 28px; padding: 0;
+    font-size: 14px; line-height: 1; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: border-color 0.15s var(--ease), color 0.15s var(--ease);
+  }
+  .theme-toggle:hover { border-color: var(--border-strong); color: var(--ink); }
 
   /* ---------- Banner (you haven't voted / waiting) ---------- */
   .banner {
@@ -111,9 +189,9 @@
   }
   #alerts[hidden] { display: none; }
   .alert-banner {
-    background: linear-gradient(135deg, #fff4e0, #ffe8d1);
-    color: #a15d12;
-    border: 1px solid #f0c37a;
+    background: var(--alert-bg);
+    color: var(--alert-ink);
+    border: 1px solid var(--alert-border);
     border-radius: var(--radius);
     padding: 10px 14px;
     font-size: 14px;
@@ -326,7 +404,7 @@
 
   /* ---------- Modals ---------- */
   .overlay {
-    position: fixed; inset: 0; background: rgba(16, 24, 40, 0.48); z-index: 100;
+    position: fixed; inset: 0; background: var(--overlay); z-index: 100;
     display: flex; align-items: center; justify-content: center; padding: 20px;
     animation: overlay-in 0.15s var(--ease);
   }
@@ -336,7 +414,8 @@
     background: var(--card); color: var(--ink); border-radius: 14px;
     padding: 22px; max-width: 380px; width: 100%;
     display: flex; flex-direction: column; gap: 12px;
-    box-shadow: 0 16px 48px rgba(16, 24, 40, 0.2);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-md);
     animation: modal-in 0.2s var(--ease);
   }
   @keyframes modal-in { from { transform: translateY(6px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -387,6 +466,7 @@
   <div class="who">
     <span id="who"></span>
     <button id="change-name" class="linky">change</button>
+    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode" title="Switch theme">🌙</button>
   </div>
 </header>
 

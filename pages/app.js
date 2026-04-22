@@ -63,6 +63,30 @@
   document.getElementById("shame-cancel").addEventListener("click", dismissShame);
   document.getElementById("shame-confirm").addEventListener("click", confirmShame);
 
+  // ---------- Theme toggle ----------
+  const themeBtn = document.getElementById("theme-toggle");
+  const mqDark = window.matchMedia("(prefers-color-scheme: dark)");
+  themeBtn.addEventListener("click", () => {
+    const next = effectiveTheme() === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem("lunch-vote-theme-pref", next);
+    updateThemeIcon();
+  });
+  mqDark.addEventListener("change", () => {
+    if (!localStorage.getItem("lunch-vote-theme-pref")) updateThemeIcon();
+  });
+  function effectiveTheme() {
+    const explicit = document.documentElement.dataset.theme;
+    if (explicit === "light" || explicit === "dark") return explicit;
+    return mqDark.matches ? "dark" : "light";
+  }
+  function updateThemeIcon() {
+    const t = effectiveTheme();
+    themeBtn.textContent = t === "dark" ? "☀" : "🌙";
+    themeBtn.title = t === "dark" ? "Switch to light mode" : "Switch to dark mode";
+  }
+  updateThemeIcon();
+
   // ---------- Identity ----------
   function getUser() {
     try { return JSON.parse(localStorage.getItem("lunch-vote-user") || "null"); } catch { return null; }
