@@ -21,7 +21,7 @@
     "short": "Vote on where to go for lunch today.",
     "full": "Pulls menus from configured restaurants and lets the office vote on where to go for lunch."
   },
-  "accentColor": "#5B5FC7",
+  "accentColor": "#b83a3a",
   "staticTabs": [
     {
       "entityId": "vote",

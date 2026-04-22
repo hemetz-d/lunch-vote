@@ -1,6 +1,6 @@
 // Generates placeholder Teams app icons using only Node built-ins.
 //
-//   teams/icons/color.png   — 192×192, Teams-purple (#5B5FC7) with a white plate + fork glyph
+//   teams/icons/color.png   — 192×192, brand red (#b83a3a) with a white plate + fork glyph
 //   teams/icons/outline.png — 32×32, white silhouette on transparent (required by Teams)
 //
 // Overwrite these with real designs before distributing beyond a test install.
@@ -107,11 +107,11 @@ function fillRect(buf, w, h, x0, y0, x1, y1, color) {
   }
 }
 
-// Draw the plate-on-purple "color" design at an arbitrary size.
+// Draw the plate-on-red "color" design at an arbitrary size.
 function renderColor(W, H) {
-  const purple = [0x5b, 0x5f, 0xc7, 0xff];
+  const bg = [0xb8, 0x3a, 0x3a, 0xff];
   const white = [0xff, 0xff, 0xff, 0xff];
-  const buf = makeRgba(W, H, purple);
+  const buf = makeRgba(W, H, bg);
   const cx = W / 2, cy = H / 2;
   const scale = Math.min(W, H) / 192;
   const R_outer = Math.round(66 * scale);
@@ -123,7 +123,7 @@ function renderColor(W, H) {
   const handleTop = Math.round(cy - 16 * scale);
 
   fillCircle(buf, W, H, cx, cy, R_outer, white);
-  fillCircle(buf, W, H, cx, cy, R_inner, purple);
+  fillCircle(buf, W, H, cx, cy, R_inner, bg);
   fillRect(buf, W, H, Math.round(cx - halfW), tineTop,       Math.round(cx - halfW + tineW * 2), tineBottom, white);
   fillRect(buf, W, H, Math.round(cx - tineW), tineTop,       Math.round(cx + tineW),             tineBottom, white);
   fillRect(buf, W, H, Math.round(cx + halfW - tineW * 2), tineTop, Math.round(cx + halfW),       tineBottom, white);

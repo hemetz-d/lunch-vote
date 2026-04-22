@@ -613,7 +613,7 @@
 
   // ---------- Confetti ----------
   function fireConfetti() {
-    const COLORS = ["#5B5FC7", "#ff5e9c", "#ffd93d", "#4ac29a", "#f97e5d", "#7ecff1"];
+    const COLORS = ["#b83a3a", "#ff5e9c", "#ffd93d", "#4ac29a", "#f97e5d", "#7ecff1"];
     const N = 80;
     const frag = document.createDocumentFragment();
     for (let i = 0; i < N; i++) {

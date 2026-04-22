@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Lunch Vote</title>
-<meta name="theme-color" content="#5B5FC7" />
+<meta name="theme-color" content="#b83a3a" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="Lunch Vote" />
@@ -28,9 +28,9 @@
     --ink: #1a1d26;
     --muted: #6b7280;
     --faint: #9aa0ab;
-    --accent: #5b5fc7;
-    --accent-hover: #4a4eb5;
-    --accent-soft: #eceefc;
+    --accent: #b83a3a;
+    --accent-hover: #9a2e2e;
+    --accent-soft: #fbe8e6;
     --winner: #d4a93a;
     --winner-soft: #fbf4e1;
     --border: #e7e9ee;
@@ -42,8 +42,6 @@
     --alert-bg: linear-gradient(135deg, #fff4e0, #ffe8d1);
     --alert-ink: #a15d12;
     --alert-border: #f0c37a;
-    --today-tint: #fbe8e6;
-    --today-ink: #a3373c;
     --overlay: rgba(16, 24, 40, 0.48);
     --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
     --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08);
@@ -66,22 +64,20 @@
     --ink: #e4e7ec;
     --muted: #9ba3b0;
     --faint: #656c78;
-    --accent: #8a90f4;
-    --accent-hover: #a2a7f7;
-    --accent-soft: #1e2138;
+    --accent: #e88585;
+    --accent-hover: #f0a0a0;
+    --accent-soft: #2e1818;
     --winner: #e0b84b;
     --winner-soft: #2a2416;
     --border: #262a33;
     --border-strong: #343945;
-    --danger: #e07777;
-    --danger-soft: #2e1a1a;
+    --danger: #c76060;
+    --danger-soft: #3a1414;
     --warn-soft: #2a2411;
     --warn-ink: #d4b668;
     --alert-bg: linear-gradient(135deg, #2a220f, #35291b);
     --alert-ink: #e0b37a;
     --alert-border: #5c4420;
-    --today-tint: #2e1818;
-    --today-ink: #e89898;
     --overlay: rgba(0, 0, 0, 0.65);
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
@@ -232,8 +228,8 @@
     display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
   }
   .week-day-header .sub { color: var(--faint); font-weight: 400; letter-spacing: 0; text-transform: none; }
-  .week-day-header.today { color: var(--today-ink); }
-  .week-day-header.today .sub { color: var(--today-ink); }
+  .week-day-header.today { color: var(--accent); }
+  .week-day-header.today .sub { color: var(--accent); }
 
   .week-strips { display: flex; flex-direction: column; gap: 10px; }
   .week-strip {
@@ -263,7 +259,7 @@
     font-size: 13px;
     display: flex; flex-direction: column; gap: 2px;
   }
-  .week-day-cell.today { background: var(--today-tint); }
+  .week-day-cell.today { background: var(--accent-soft); }
   .week-day-cell ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 5px; }
   .week-day-cell ul li {
     line-height: 1.35; overflow-wrap: anywhere;
@@ -291,7 +287,7 @@
       gap: 1px;
     }
     .week-day-cell-label { display: block; }
-    .week-day-cell.today { background: var(--today-tint); }
+    .week-day-cell.today { background: var(--accent-soft); }
   }
 
   /* ---------- Banner (you haven't voted / waiting) ---------- */
