@@ -50,8 +50,9 @@
   const leaderboardSummary = document.getElementById("leaderboard-summary");
   const shameModal = document.getElementById("shame-modal");
   const shameBodyEl = document.getElementById("shame-body");
-  const weekGridEl = document.getElementById("week-grid");
   const weekTitleEl = document.getElementById("week-title");
+  const weekDayHeadersEl = document.getElementById("week-day-headers");
+  const weekStripsEl = document.getElementById("week-strips");
   const tabButtons = document.querySelectorAll(".tab");
 
   let lastLeaderId;         // sentinel undefined = haven't rendered yet
@@ -193,36 +194,63 @@
       weekData = await res.json();
       renderWeek(weekData);
     } catch (err) {
-      weekGridEl.innerHTML = `<p style="color: var(--muted); font-size: 13px;">Failed to load week: ${escape(err.message)}</p>`;
+      weekStripsEl.innerHTML = `<p style="color: var(--muted); font-size: 13px;">Failed to load week: ${escape(err.message)}</p>`;
+      weekDayHeadersEl.innerHTML = "";
     }
   }
 
   function renderWeek(data) {
     weekTitleEl.textContent = formatWeekRange(data.weekStart, data.weekEnd)
       + (data.previewing ? " · next week preview" : "");
-    weekGridEl.innerHTML = "";
-    for (const day of data.days) {
-      const col = document.createElement("div");
-      col.className = "day-col" + (day.date === data.today ? " today" : "");
-      const weekday = new Date(day.date + "T12:00:00Z").toLocaleDateString(undefined, { weekday: "long", timeZone: "UTC" });
-      const monthDay = new Date(day.date + "T12:00:00Z").toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
-      col.innerHTML = `<h3><span>${escape(weekday)}</span><span class="day-date">${escape(monthDay)}</span></h3>`;
-      for (const r of day.restaurants) {
-        const rEl = document.createElement("div");
-        rEl.className = "day-rest";
-        const link = r.menuUrl ? `<a href="${escape(r.menuUrl)}" target="_blank" rel="noopener">↗</a>` : "";
-        let body = "";
-        if (r.options && r.options.length > 0) {
-          body = `<ul>${r.options.map(o =>
-            `<li><span>${escape(o.name)}</span>${o.price != null ? `<span class="opt-price">€${o.price.toFixed(2)}</span>` : ""}</li>`
-          ).join("")}</ul>`;
-        } else {
-          body = `<div class="empty">No menu</div>`;
-        }
-        rEl.innerHTML = `<h4><span>${escape(r.name)}</span>${link}</h4>${body}`;
-        col.appendChild(rEl);
+
+    // Build the shared day-header row on top. Same 5-column grid the strips use.
+    weekDayHeadersEl.innerHTML = data.days.map(d => {
+      const dt = new Date(d.date + "T12:00:00Z");
+      const weekday = dt.toLocaleDateString(undefined, { weekday: "long", timeZone: "UTC" });
+      const monthDay = dt.toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+      const todayClass = d.date === data.today ? " today" : "";
+      return `<div class="week-day-header${todayClass}"><span>${escape(weekday)}</span><span class="sub">${escape(monthDay)}</span></div>`;
+    }).join("");
+
+    // Pivot days → restaurants. Each restaurant becomes one row strip with
+    // its 5 day cells inside, aligned with the header strip above.
+    weekStripsEl.innerHTML = "";
+    if (data.days.length === 0) return;
+    const restaurantIds = data.days[0].restaurants.map(r => r.id);
+    for (const rid of restaurantIds) {
+      const anyDay = data.days[0].restaurants.find(r => r.id === rid);
+      if (!anyDay) continue;
+
+      const strip = document.createElement("div");
+      strip.className = "week-strip";
+
+      const link = anyDay.menuUrl
+        ? `<a href="${escape(anyDay.menuUrl)}" target="_blank" rel="noopener">View original ↗</a>`
+        : "";
+      const head = document.createElement("div");
+      head.className = "week-strip-head";
+      head.innerHTML = `<h3>${escape(anyDay.name)}</h3>${link}`;
+      strip.appendChild(head);
+
+      const days = document.createElement("div");
+      days.className = "week-strip-days";
+      for (const d of data.days) {
+        const r = d.restaurants.find(x => x.id === rid);
+        const todayClass = d.date === data.today ? " today" : "";
+        const dt = new Date(d.date + "T12:00:00Z");
+        const label = dt.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+        const cell = document.createElement("div");
+        cell.className = `week-day-cell${todayClass}`;
+        cell.innerHTML = `<div class="week-day-cell-label">${escape(label)}</div>`
+          + (r && r.options.length > 0
+            ? `<ul>${r.options.map(o =>
+                `<li><span class="opt-name">${escape(o.name)}</span>${o.price != null ? `<span class="opt-price">€${o.price.toFixed(2)}</span>` : ""}</li>`
+              ).join("")}</ul>`
+            : `<div class="empty">—</div>`);
+        days.appendChild(cell);
       }
-      weekGridEl.appendChild(col);
+      strip.appendChild(days);
+      weekStripsEl.appendChild(strip);
     }
   }
 
