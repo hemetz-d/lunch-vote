@@ -11,8 +11,13 @@
   // a beloved dish. Matched against name + description, case-insensitive.
   const ALERTS = [
     {
+      // Require "pizza" to appear near "diavola/o" so pasta dishes like
+      // "Penne alla Diavola" don't trigger. The [^./] bound stops matching
+      // at the "/" separating the Italian name from the German translation,
+      // so a Pizza Margherita paired with a Penne Diavola description
+      // won't match either.
       restaurantId: "ferdinando",
-      pattern: /\bdiavol[oa]\b/i,
+      pattern: /\bpizza\b[^./]{0,30}\bdiavol[oa]\b/i,
       emoji: "🔥",
       dishName: "Pizza Diavola",
     },
