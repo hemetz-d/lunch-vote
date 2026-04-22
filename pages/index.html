@@ -104,6 +104,32 @@
   .banner .waiting { color: var(--muted); margin-left: auto; }
   .banner[hidden] { display: none; }
 
+  /* ---------- Alerts (today has a beloved dish) ---------- */
+  #alerts {
+    max-width: var(--max); margin: 0 auto; padding: 8px 20px 4px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  #alerts[hidden] { display: none; }
+  .alert-banner {
+    background: linear-gradient(135deg, #fff4e0, #ffe8d1);
+    color: #a15d12;
+    border: 1px solid #f0c37a;
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-size: 14px;
+    display: flex; align-items: center; gap: 10px;
+    box-shadow: var(--shadow-sm);
+  }
+  .alert-banner .alert-emoji {
+    font-size: 20px; line-height: 1; user-select: none;
+    animation: alert-pulse 2.2s ease-in-out infinite;
+  }
+  @keyframes alert-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.18); }
+  }
+  .alert-banner strong { font-weight: 600; }
+
   /* ---------- Main grid ---------- */
   main {
     max-width: var(--max); margin: 0 auto;
@@ -365,6 +391,7 @@
 </header>
 
 <div id="banner" class="banner" hidden></div>
+<div id="alerts" hidden></div>
 <main id="main"></main>
 
 <section class="protest">

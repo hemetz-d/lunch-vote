@@ -7,6 +7,23 @@
   const REFRESH_MS = 10_000;
   const STALE_MS = 2.5 * 24 * 60 * 60 * 1000;  // > 2.5 days since last fetch → stale badge
 
+  // Fire an attention-grabbing banner when a restaurant's menu today contains
+  // a beloved dish. Matched against name + description, case-insensitive.
+  const ALERTS = [
+    {
+      restaurantId: "ferdinando",
+      pattern: /\bdiavol[oa]\b/i,
+      emoji: "🔥",
+      dishName: "Pizza Diavola",
+    },
+    {
+      restaurantId: "radatz",
+      pattern: /\blasagne\b/i,
+      emoji: "🍝",
+      dishName: "Lasagne",
+    },
+  ];
+
   // ---------- DOM references ----------
   const nameModal = document.getElementById("name-modal");
   const whoEl = document.getElementById("who");
@@ -19,6 +36,7 @@
   const noteInput = document.getElementById("note-input");
   const noteSubmit = document.getElementById("note-submit");
   const bannerEl = document.getElementById("banner");
+  const alertsEl = document.getElementById("alerts");
   const hangryEl = document.getElementById("hangry");
   const confettiRoot = document.getElementById("confetti-root");
   const protestBtn = document.getElementById("protest-btn");
@@ -220,6 +238,31 @@
     }
   }
 
+  function renderAlerts(restaurants) {
+    alertsEl.innerHTML = "";
+    const triggered = [];
+    for (const alert of ALERTS) {
+      const r = restaurants.find(x => x.id === alert.restaurantId);
+      if (!r || !r.options.length) continue;
+      const matched = r.options.find(o =>
+        alert.pattern.test(`${o.name} ${o.description || ""}`)
+      );
+      if (matched) {
+        triggered.push({ ...alert, restaurant: r.name, matchedName: matched.name });
+      }
+    }
+    if (triggered.length === 0) { alertsEl.hidden = true; return; }
+    alertsEl.hidden = false;
+    for (const t of triggered) {
+      const div = document.createElement("div");
+      div.className = "alert-banner";
+      div.innerHTML =
+        `<span class="alert-emoji">${t.emoji}</span>`
+        + `<span><strong>${escape(t.dishName)}</strong> at <strong>${escape(t.restaurant)}</strong> today — ${escape(t.matchedName)}</span>`;
+      alertsEl.appendChild(div);
+    }
+  }
+
   function renderNotes(notes) {
     notesListEl.innerHTML = "";
     if (!notes || notes.length === 0) {
@@ -244,6 +287,7 @@
   function render(data) {
     dateEl.textContent = formatDate(data.date) + (data.previewing ? " · next Monday preview" : "");
     renderBanner(data);
+    renderAlerts(data.restaurants);
     renderNotes(data.notes);
 
     const maxVotes = Math.max(0, ...data.restaurants.map(r => r.votes));
