@@ -9,10 +9,12 @@ const STANDARD_OPTIONS: Option[] = [
   {
     name: "Noodle Box",
     description: "Grilled or crispy chicken · teriyaki, sweet chili, or sweet & sour",
+    price: 6.90,
   },
   {
     name: "Rice Box",
     description: "Grilled or crispy chicken · teriyaki, sweet chili, or sweet & sour",
+    price: 6.90,
   },
 ];
 

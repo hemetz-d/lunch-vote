@@ -506,8 +506,11 @@
       ul.className = "options";
       for (const o of r.options) {
         const li = document.createElement("li");
-        li.innerHTML = `<span class="opt-name">${escape(o.name)}</span>`
-          + (o.price != null ? `<span class="opt-price">€${o.price.toFixed(2)}</span>` : "")
+        li.innerHTML =
+          `<div class="opt-row">`
+            + `<span class="opt-name">${escape(o.name)}</span>`
+            + (o.price != null ? `<span class="opt-price">€${o.price.toFixed(2)}</span>` : "")
+          + `</div>`
           + (o.description ? `<div class="opt-desc">${escape(o.description)}</div>` : "");
         ul.appendChild(li);
       }
