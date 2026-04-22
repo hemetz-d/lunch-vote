@@ -213,10 +213,15 @@
     }).join("");
 
     // Pivot days → restaurants. Each restaurant becomes one row strip with
-    // its 5 day cells inside, aligned with the header strip above.
+    // its 5 day cells inside, aligned with the header strip above. Noodle
+    // King is excluded from the Week view because it has no weekly variation
+    // — the Today tab covers the daily option just fine. Order is fixed:
+    // Ferdinando → Radatz → Odysseus.
     weekStripsEl.innerHTML = "";
     if (data.days.length === 0) return;
-    const restaurantIds = data.days[0].restaurants.map(r => r.id);
+    const WEEK_ORDER = ["ferdinando", "radatz", "odysseus"];
+    const available = new Set(data.days[0].restaurants.map(r => r.id));
+    const restaurantIds = WEEK_ORDER.filter(id => available.has(id));
     for (const rid of restaurantIds) {
       const anyDay = data.days[0].restaurants.find(r => r.id === rid);
       if (!anyDay) continue;
