@@ -170,6 +170,85 @@
   }
   .theme-toggle:hover { border-color: var(--border-strong); color: var(--ink); }
 
+  /* ---------- Tabs ---------- */
+  .tabs {
+    max-width: var(--max); margin: 0 auto; padding: 10px 20px 0;
+    display: flex; gap: 6px;
+  }
+  .tab {
+    background: transparent; border: 1px solid transparent;
+    color: var(--muted); cursor: pointer;
+    padding: 7px 14px; font-size: 13px; font-weight: 500;
+    border-radius: 999px;
+    transition: background 0.15s var(--ease), color 0.15s var(--ease), border-color 0.15s var(--ease);
+  }
+  .tab:hover { color: var(--ink); }
+  .tab.active {
+    background: var(--card); color: var(--ink);
+    border-color: var(--border);
+  }
+
+  /* Sections shown only in one view. Switched via body[data-view]. */
+  body[data-view="week"] #banner,
+  body[data-view="week"] #alerts,
+  body[data-view="week"] main,
+  body[data-view="week"] section.protest,
+  body[data-view="week"] section.notes,
+  body[data-view="week"] section.leaderboard { display: none; }
+  body[data-view="today"] #week-view { display: none; }
+
+  /* ---------- Week view ---------- */
+  #week-view {
+    max-width: var(--max); margin: 0 auto;
+    padding: 12px 20px 20px;
+  }
+  .week-title {
+    font-size: 12px; font-weight: 500; color: var(--faint);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin-bottom: 10px;
+  }
+  .week-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;
+  }
+  .day-col {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px; display: flex; flex-direction: column; gap: 14px;
+    box-shadow: var(--shadow-sm); min-width: 0;
+  }
+  .day-col.today {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-sm), 0 0 0 1px var(--accent);
+  }
+  .day-col h3 {
+    margin: 0; font-size: 14px; font-weight: 600;
+    padding-bottom: 8px; border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: baseline; gap: 6px;
+  }
+  .day-col h3 .day-date { color: var(--faint); font-weight: 400; font-size: 12px; }
+  .day-rest h4 {
+    margin: 0 0 4px; font-size: 12px; font-weight: 600;
+    display: flex; justify-content: space-between; align-items: center; gap: 6px;
+  }
+  .day-rest h4 a {
+    color: var(--faint); font-size: 11px; font-weight: 400; text-decoration: none;
+  }
+  .day-rest h4 a:hover { color: var(--accent); }
+  .day-rest ul {
+    margin: 0; padding: 0; list-style: none;
+    font-size: 12px; color: var(--ink); line-height: 1.4;
+  }
+  .day-rest ul li {
+    margin-bottom: 3px; overflow-wrap: anywhere;
+  }
+  .day-rest ul .opt-price {
+    color: var(--muted); margin-left: 4px; font-size: 11px;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .day-rest .empty { font-size: 12px; color: var(--faint); font-style: italic; }
+  @media (max-width: 900px) {
+    .week-grid { grid-template-columns: 1fr; }
+  }
+
   /* ---------- Banner (you haven't voted / waiting) ---------- */
   .banner {
     max-width: var(--max); margin: 0 auto;
@@ -447,7 +526,7 @@
     header { padding: 12px 16px; }
     header h1 { font-size: 17px; }
     main { padding: 12px 16px 16px; gap: 10px; grid-template-columns: 1fr; }
-    section.protest, section.notes, section.leaderboard, .banner, footer {
+    section.protest, section.notes, section.leaderboard, .banner, .tabs, #alerts, footer, #week-view {
       padding-left: 16px; padding-right: 16px;
     }
     button.vote { padding: 12px 16px; font-size: 15px; min-height: 44px; }
@@ -473,9 +552,18 @@
   </div>
 </header>
 
+<nav class="tabs" role="tablist">
+  <button class="tab active" data-view="today" role="tab" aria-selected="true">Today</button>
+  <button class="tab" data-view="week" role="tab" aria-selected="false">Week</button>
+</nav>
+
 <div id="banner" class="banner" hidden></div>
 <div id="alerts" hidden></div>
 <main id="main"></main>
+<section id="week-view">
+  <div class="week-title" id="week-title">Weekly overview</div>
+  <div class="week-grid" id="week-grid"></div>
+</section>
 
 <section class="protest">
   <button id="protest-btn" class="protest" title="I don't want any of these today">🪧 None of these</button>

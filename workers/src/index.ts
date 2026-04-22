@@ -1,11 +1,12 @@
 import type { Env, MenuSource } from "./types.js";
-import { isoDate, viewingDate } from "./dates.js";
+import { isoDate, viewingDate, weekdayDates } from "./dates.js";
 import {
   listRestaurants,
   storeWeeklyMenu,
   recordSourceSuccess,
   recordSourceError,
   getToday,
+  getWeekMenus,
   castVote,
   getMyVote,
   upsertUser,
@@ -72,6 +73,37 @@ export default {
           waitingOn,
           badges,
           leaderboard,
+        });
+      }
+
+      if (url.pathname === "/api/week" && req.method === "GET") {
+        const now = new Date();
+        const viewing = viewingDate(now);
+        // weekdayDates wants a Date anchor; parse the viewing date at noon UTC
+        // so weekday math doesn't straddle a boundary.
+        const anchor = new Date(viewing + "T12:00:00Z");
+        const dates = weekdayDates(anchor);
+        const menusByDate = await getWeekMenus(env, dates);
+        const restaurants = (await listRestaurants(env)).filter(r => r.id !== "protest");
+        const sourceById = new Map(SOURCES.map(s => [s.id, s]));
+        const days = dates.map(date => {
+          const byRest = menusByDate.get(date) ?? new Map();
+          return {
+            date,
+            restaurants: restaurants.map(r => ({
+              id: r.id,
+              name: r.name,
+              menuUrl: sourceById.get(r.id)?.menuUrl,
+              options: byRest.get(r.id) ?? [],
+            })),
+          };
+        });
+        return json({
+          weekStart: dates[0],
+          weekEnd: dates[dates.length - 1],
+          today: isoDate(now),
+          previewing: viewing !== isoDate(now),
+          days,
         });
       }
 

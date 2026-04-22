@@ -45,6 +45,31 @@ export async function recordSourceError(env: Env, sourceId: string, error: strin
     .run();
 }
 
+// Week-overview data: for each date in `dates`, a map of restaurant_id -> options[].
+// Used by /api/week for the read-only weekly menu view. No voters / votes; this
+// is purely menu display.
+export async function getWeekMenus(
+  env: Env,
+  dates: string[]
+): Promise<Map<string, Map<string, Option[]>>> {
+  const out = new Map<string, Map<string, Option[]>>();
+  for (const d of dates) out.set(d, new Map());
+  if (dates.length === 0) return out;
+  const placeholders = dates.map(() => "?").join(",");
+  const { results } = await env.DB.prepare(
+    `SELECT restaurant_id, date, options_json FROM menus WHERE date IN (${placeholders})`
+  )
+    .bind(...dates)
+    .all();
+  for (const r of results as unknown as { restaurant_id: string; date: string; options_json: string }[]) {
+    try {
+      const byRest = out.get(r.date);
+      if (byRest) byRest.set(r.restaurant_id, JSON.parse(r.options_json));
+    } catch {}
+  }
+  return out;
+}
+
 export async function getToday(env: Env, isoDate: string): Promise<TodayForRestaurant[]> {
   const restaurants = await listRestaurants(env);
   const { results: menuRows } = await env.DB.prepare(

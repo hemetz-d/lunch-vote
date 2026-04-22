@@ -50,11 +50,16 @@
   const leaderboardSummary = document.getElementById("leaderboard-summary");
   const shameModal = document.getElementById("shame-modal");
   const shameBodyEl = document.getElementById("shame-body");
+  const weekGridEl = document.getElementById("week-grid");
+  const weekTitleEl = document.getElementById("week-title");
+  const tabButtons = document.querySelectorAll(".tab");
 
   let lastLeaderId;         // sentinel undefined = haven't rendered yet
   let lastData = null;
+  let weekData = null;
   let autoRefreshed = false;
   let pendingShameAction = null;
+  let activeView = localStorage.getItem("lunch-vote-view") === "week" ? "week" : "today";
 
   // ---------- Event wiring ----------
   document.getElementById("change-name").addEventListener("click", () => openNameModal());
@@ -67,6 +72,7 @@
   protestBtn.addEventListener("click", toggleProtest);
   document.getElementById("shame-cancel").addEventListener("click", dismissShame);
   document.getElementById("shame-confirm").addEventListener("click", confirmShame);
+  for (const btn of tabButtons) btn.addEventListener("click", () => switchView(btn.dataset.view));
 
   // ---------- Theme toggle ----------
   const themeBtn = document.getElementById("theme-toggle");
@@ -157,12 +163,76 @@
       const res = await fetch(`${API}/api/refresh`, { method: "POST" });
       if (!res.ok) throw new Error(`refresh ${res.status}`);
       await refresh();
+      if (activeView === "week") await loadWeek();
     } catch (err) {
       footerEl.textContent = `Refresh failed: ${err.message}`;
     } finally {
       refreshBtn.disabled = false;
       refreshBtn.textContent = orig;
     }
+  }
+
+  // ---------- Tabs + view switching ----------
+  function switchView(view) {
+    if (view !== "today" && view !== "week") return;
+    activeView = view;
+    localStorage.setItem("lunch-vote-view", view);
+    document.body.dataset.view = view;
+    for (const btn of tabButtons) {
+      const active = btn.dataset.view === view;
+      btn.classList.toggle("active", active);
+      btn.setAttribute("aria-selected", String(active));
+    }
+    if (view === "week") loadWeek();
+  }
+
+  async function loadWeek() {
+    try {
+      const res = await fetch(`${API}/api/week`);
+      if (!res.ok) throw new Error(`API ${res.status}`);
+      weekData = await res.json();
+      renderWeek(weekData);
+    } catch (err) {
+      weekGridEl.innerHTML = `<p style="color: var(--muted); font-size: 13px;">Failed to load week: ${escape(err.message)}</p>`;
+    }
+  }
+
+  function renderWeek(data) {
+    weekTitleEl.textContent = formatWeekRange(data.weekStart, data.weekEnd)
+      + (data.previewing ? " · next week preview" : "");
+    weekGridEl.innerHTML = "";
+    for (const day of data.days) {
+      const col = document.createElement("div");
+      col.className = "day-col" + (day.date === data.today ? " today" : "");
+      const weekday = new Date(day.date + "T12:00:00Z").toLocaleDateString(undefined, { weekday: "long", timeZone: "UTC" });
+      const monthDay = new Date(day.date + "T12:00:00Z").toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+      col.innerHTML = `<h3><span>${escape(weekday)}</span><span class="day-date">${escape(monthDay)}</span></h3>`;
+      for (const r of day.restaurants) {
+        const rEl = document.createElement("div");
+        rEl.className = "day-rest";
+        const link = r.menuUrl ? `<a href="${escape(r.menuUrl)}" target="_blank" rel="noopener">↗</a>` : "";
+        let body = "";
+        if (r.options && r.options.length > 0) {
+          body = `<ul>${r.options.map(o =>
+            `<li><span>${escape(o.name)}</span>${o.price != null ? `<span class="opt-price">€${o.price.toFixed(2)}</span>` : ""}</li>`
+          ).join("")}</ul>`;
+        } else {
+          body = `<div class="empty">No menu</div>`;
+        }
+        rEl.innerHTML = `<h4><span>${escape(r.name)}</span>${link}</h4>${body}`;
+        col.appendChild(rEl);
+      }
+      weekGridEl.appendChild(col);
+    }
+  }
+
+  function formatWeekRange(startIso, endIso) {
+    const s = new Date(startIso + "T12:00:00Z");
+    const e = new Date(endIso + "T12:00:00Z");
+    const sameMonth = s.getUTCMonth() === e.getUTCMonth();
+    const startFmt = s.toLocaleDateString(undefined, { month: "long", day: "numeric", timeZone: "UTC" });
+    const endFmt = e.toLocaleDateString(undefined, { month: sameMonth ? undefined : "long", day: "numeric", timeZone: "UTC" });
+    return `Week of ${startFmt} – ${endFmt}`;
   }
 
   // ---------- Voting ----------
@@ -544,6 +614,7 @@
   if (user) whoEl.textContent = user.name;
   updateHangryClock();
   setInterval(updateHangryClock, 60_000);
+  switchView(activeView);   // applies body[data-view], tab highlight, and triggers week load if needed
   refresh();
   setInterval(refresh, REFRESH_MS);
 })();
