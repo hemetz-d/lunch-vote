@@ -172,15 +172,18 @@
 
   /* ---------- Banner (you haven't voted / waiting) ---------- */
   .banner {
-    max-width: var(--max); margin: 0 auto; padding: 10px 20px;
-    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+    max-width: var(--max); margin: 0 auto;
+    padding: 8px 20px 0;
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
     font-size: 13px;
   }
-  .banner.nudge {
+  .banner[hidden] { display: none; }
+  .banner .nudge-pill {
     background: var(--accent-soft); color: var(--accent);
+    padding: 6px 12px; border-radius: 999px;
+    font-weight: 500;
   }
   .banner .waiting { color: var(--muted); margin-left: auto; }
-  .banner[hidden] { display: none; }
 
   /* ---------- Alerts (today has a beloved dish) ---------- */
   #alerts {

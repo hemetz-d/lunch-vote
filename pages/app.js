@@ -251,9 +251,10 @@
     bannerEl.innerHTML = "";
     if (!haventVoted && waiting.length === 0) { bannerEl.hidden = true; return; }
     bannerEl.hidden = false;
-    bannerEl.className = "banner" + (haventVoted ? " nudge" : "");
+    bannerEl.className = "banner";
     if (haventVoted) {
       const m = document.createElement("span");
+      m.className = "nudge-pill";
       m.textContent = data.previewing ? "You haven't pre-voted for Monday yet." : "You haven't voted yet today.";
       bannerEl.appendChild(m);
     }
