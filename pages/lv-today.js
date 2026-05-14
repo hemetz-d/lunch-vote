@@ -150,11 +150,11 @@
     );
     leftRail.append(tally);
 
-    // Week mini (linked to /week-new.html)
+    // Week mini (linked to /week.html)
     leftRail.append(
       h("div", { class: "rail-card" },
         h("h3", null, "This week"),
-        h("a", { href: "/week-new.html", style: {
+        h("a", { href: "/week.html", style: {
           display: "inline-flex", gap: "8px", alignItems: "center",
           color: "var(--ink)", textDecoration: "none", fontSize: "14px",
         } }, "▤ ", "Open weekly overview →"),
@@ -557,7 +557,7 @@
         h("div", { class: "actions" },
           h("button", { class: "btn", onClick: () => resetVoting() },
             picks.length === 1 ? "Change my vote" : "Change my votes"),
-          h("a", { class: "btn", href: "/week-new.html" }, "View week"),
+          h("a", { class: "btn", href: "/week.html" }, "View week"),
         ),
       );
     }

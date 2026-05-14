@@ -1,16 +1,15 @@
-// Lunch Vote — new UI shared module.
-// Pulled in by both index-new.html (Today / Slate Reels) and week-new.html.
+// Lunch Vote — shared module.
+// Pulled in by both index.html (Today / Slate Reels) and week.html.
 //
-// Vanilla JS, no build step, matches the style of the existing app.js.
-// Identity / api client / restaurant metadata / preference toggles / shared
-// DOM helpers live here, attached to window.LV.
+// Vanilla JS, no build step. Identity / api client / restaurant metadata /
+// preference toggles / shared DOM helpers live here, attached to window.LV.
 
 (() => {
   const API = location.origin;
 
-  // ---------- Identity (shared with existing app.js) ----------
-  // We reuse `lunch-vote-user` so a vote on /new and a vote on / are the same
-  // user from the backend's perspective.
+  // ---------- Identity ----------
+  // localStorage key carried over from the previous UI so existing users
+  // keep their id/name through the cutover.
   function getUser() {
     try { return JSON.parse(localStorage.getItem("lunch-vote-user") || "null"); }
     catch { return null; }
@@ -70,8 +69,9 @@
     spar:          { emoji: "🛒", nick: "Supermarket" },
   };
 
-  // ---------- Beloved dish alerts (ported from existing app.js) ----------
-  // Same patterns as the current app — match name+description, case-insensitive.
+  // ---------- Beloved dish alerts ----------
+  // Match name+description, case-insensitive. Surfaces the dynamic alert
+  // card when a watched dish is on today's menu.
   const ALERTS = [
     { restaurantId: "ferdinando", pattern: /\bpizza\b[^./]{0,30}\bdiavol[oa]\b/i, emoji: "🔥", dishName: "Pizza Diavola" },
     { restaurantId: "radatz",     pattern: /\blasagne\b/i,                       emoji: "🍝", dishName: "Lasagne" },
@@ -212,8 +212,8 @@
   // ---------- Shared widgets: Tabs / Header controls ----------
   function makeTabs(active) {
     return h("div", { class: "wo-tabs", role: "tablist", "aria-label": "View" },
-      h("a", { href: "/index-new.html", class: active === "today" ? "active" : "" }, "↺ Today"),
-      h("a", { href: "/week-new.html", class: active === "week" ? "active" : "" }, "▤ Week"),
+      h("a", { href: "/", class: active === "today" ? "active" : "" }, "↺ Today"),
+      h("a", { href: "/week.html", class: active === "week" ? "active" : "" }, "▤ Week"),
     );
   }
 
