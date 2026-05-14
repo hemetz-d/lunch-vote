@@ -43,27 +43,66 @@ export function parseOdysseusText(text: string, dates: string[]): DayMenu[] {
   const terminator = /[✰*]\s*Dessertkombi|MITTAGSMEN[ÜU]\s+business/i.exec(afterHeader);
   const body = terminator ? afterHeader.slice(0, terminator.index) : afterHeader;
 
+  // On a public holiday or maintenance day, the PDF prints "DD.M. Feiertag á
+  // la carte" or "DD.M. Wegen ... geschlossen" in that day's column and
+  // leaves the rest of the column empty. The priced grid therefore loses
+  // one column per such day; we detect them all so the layout still aligns.
+  const closureRe = /(\d{1,2})\.(\d{1,2})\.[^\d]{0,80}?(?:[áàa]\s*la\s*carte|geschlossen)/gi;
+  const closures: { dayIdx: number; label: string }[] = [];
+  for (const cm of body.matchAll(closureRe)) {
+    const dd = Number(cm[1]);
+    const mm = Number(cm[2]);
+    let dayIdx = -1;
+    for (let i = 0; i < Math.min(5, dates.length); i++) {
+      const parts = dates[i].split("-");
+      if (parts.length === 3 && Number(parts[1]) === mm && Number(parts[2]) === dd) {
+        dayIdx = i;
+        break;
+      }
+    }
+    if (dayIdx >= 0) {
+      const label = /geschlossen/i.test(cm[0]) ? "Geschlossen" : "Feiertag – à la carte";
+      closures.push({ dayIdx, label });
+    }
+  }
+  const closedDays = new Set(closures.map(c => c.dayIdx));
+
+  // Strip the closure phrases so they don't leak into the name of whichever
+  // dish follows them in the flattened text.
+  const cleaned = body.replace(closureRe, " ");
+
   // Split on prices. Match both "€12,50" and bare "12,50" or "11,50".
   const priceRe = /€?\s*(\d{1,2})[,.](\d{2})/g;
   const pairs: { name: string; price: number }[] = [];
   let cursor = 0;
   let m: RegExpExecArray | null;
-  while ((m = priceRe.exec(body)) !== null) {
-    const name = body.slice(cursor, m.index).trim();
+  while ((m = priceRe.exec(cleaned)) !== null) {
+    const name = cleaned.slice(cursor, m.index).trim();
     const price = Number(m[1]) + Number(m[2]) / 100;
     if (name) pairs.push({ name, price });
     cursor = priceRe.lastIndex;
   }
 
-  // Expect 15 pairs (3 rows x 5 days). If we got at least 5, lay them out as a
-  // 5-column grid; extra rows beyond 3 are ignored, missing rows become empty.
-  if (pairs.length < 5) return emptyDays(dates);
-  const rows = Math.floor(pairs.length / 5);
+  const cols = 5 - closedDays.size;
+  if (cols <= 0 || pairs.length < cols) return emptyDays(dates);
+  const rows = Math.floor(pairs.length / cols);
+
+  // Map each present day to its column index in the reduced grid.
+  const dayToCol: Record<number, number> = {};
+  let nextCol = 0;
+  for (let i = 0; i < 5; i++) {
+    if (!closedDays.has(i)) dayToCol[i] = nextCol++;
+  }
 
   return Array.from({ length: 5 }, (_, dayIdx) => {
+    const closure = closures.find(c => c.dayIdx === dayIdx);
+    if (closure) {
+      return { date: dates[dayIdx] ?? "", options: [{ name: closure.label }] };
+    }
+    const colIdx = dayToCol[dayIdx];
     const options: Option[] = [];
     for (let r = 0; r < rows; r++) {
-      const idx = r * 5 + dayIdx;
+      const idx = r * cols + colIdx;
       if (idx < pairs.length) options.push(pairs[idx]);
     }
     return { date: dates[dayIdx] ?? "", options };

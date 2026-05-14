@@ -38,3 +38,30 @@ describe("parseFerdinandoText", () => {
     expect(fri.options[2].description).toMatch(/Rotwein-Sauce/);
   });
 });
+
+// Real PDF for the week of 11.–15. Mai 2026, where Donnerstag (14.5.) is a
+// public holiday and the PDF replaces that day's three options with
+// "An Feiertagen können wir Ihnen leider kein Mittagsmenü anbieten".
+describe("parseFerdinandoText with a holiday day", () => {
+  it("returns a Feiertag placeholder for the holiday and parses the other days", async () => {
+    const { extractText, getDocumentProxy } = await import("unpdf");
+    const pdfPath = join(__dirname, "fixtures/ferdinando-holiday-sample.pdf");
+    const bytes = new Uint8Array(readFileSync(pdfPath));
+    const pdf = await getDocumentProxy(bytes);
+    const { text } = await extractText(pdf, { mergePages: true });
+    const asString = Array.isArray(text) ? text.join("\n") : text;
+
+    const dates = ["2026-05-11", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15"];
+    const days = parseFerdinandoText(asString, dates);
+    expect(days).toHaveLength(5);
+
+    expect(days[3].date).toBe("2026-05-14");
+    expect(days[3].options).toHaveLength(1);
+    expect(days[3].options[0].name).toMatch(/Feiertag/);
+    expect(days[3].options[0].price).toBeUndefined();
+
+    for (const i of [0, 1, 2, 4]) expect(days[i].options).toHaveLength(3);
+    expect(days[0].options[0].name).toMatch(/ZUPPA DI LENTICCHIE/);
+    expect(days[4].options[1].name).toMatch(/PIZZA TONNO E LIMONE/);
+  }, 30000);
+});

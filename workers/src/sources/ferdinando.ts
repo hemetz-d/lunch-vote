@@ -1,7 +1,7 @@
 import type { MenuSource, WeeklyMenu, Option, DayMenu, SourceEnv } from "../types.js";
 import { weekdayDates } from "../dates.js";
 
-const PDF_URL = "https://www.daferdinando.at/menue-1"; // page hosts the current PDF
+const PDF_URL = "https://www.daferdinando.at/wochenkarte"; // page hosts the current weekly PDF
 const DAYS_DE = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"] as const;
 const MENU_PRICES: Record<number, number> = { 1: 13.9, 2: 11.9, 3: 15.9 };
 
@@ -25,10 +25,17 @@ export class FerdinandoSource implements MenuSource {
 export function parseFerdinandoText(text: string, dates: string[]): DayMenu[] {
   const normalized = text.replace(/\s+/g, " ").trim();
   const dayBlocks = splitByDay(normalized);
-  return DAYS_DE.map((day, i) => ({
-    date: dates[i] ?? "",
-    options: parseOptions(dayBlocks[day] ?? ""),
-  }));
+  return DAYS_DE.map((day, i) => {
+    const block = dayBlocks[day] ?? "";
+    const options = parseOptions(block);
+    // On a public holiday the PDF replaces the day's three options with a
+    // sentence like "An Feiertagen können wir Ihnen leider kein Mittagsmenü
+    // anbieten". Show a single placeholder so the card isn't blank.
+    if (options.length === 0 && /Feiertag/i.test(block)) {
+      options.push({ name: "Feiertag – kein Mittagsmenü" });
+    }
+    return { date: dates[i] ?? "", options };
+  });
 }
 
 function splitByDay(text: string): Record<string, string> {
