@@ -7,18 +7,10 @@ import {
   recordSourceError,
   getToday,
   getWeekMenus,
-  replaceVotes,
   addVote,
-  removeVote,
   clearVotes,
-  getMyVote,
   getMyVotes,
   upsertUser,
-  addNote,
-  listNotes,
-  listWaitingOn,
-  listBadges,
-  listLeaderboard,
 } from "./db.js";
 import { NoodleKingSource } from "./sources/noodle-king.js";
 import { FerdinandoSource } from "./sources/ferdinando.js";
@@ -64,23 +56,13 @@ export default {
         const protest = protestRow
           ? { votes: protestRow.votes, voters: protestRow.voters }
           : { votes: 0, voters: [] };
-        const myVote = userId ? await getMyVote(env, viewing, userId) : null;
         const myVotes = userId ? await getMyVotes(env, viewing, userId) : [];
-        const notes = await listNotes(env, viewing);
-        const waitingOn = await listWaitingOn(env, viewing, userId || null);
-        const badges = await listBadges(env, viewing);
-        const leaderboard = await listLeaderboard(env, viewing, badges);
         return json({
           date: viewing,
           previewing: viewing !== today,
           restaurants,
           protest,
-          myVote,
           myVotes,
-          notes,
-          waitingOn,
-          badges,
-          leaderboard,
         });
       }
 
@@ -124,26 +106,6 @@ export default {
         });
       }
 
-      if (url.pathname === "/api/note" && req.method === "POST") {
-        const userId = req.headers.get("x-user-id");
-        if (!userId) return json({ error: "missing x-user-id" }, 400);
-        const userName = req.headers.get("x-user-name") ?? "";
-        if (userName) await upsertUser(env, userId, userName);
-        // Rate limit: 5 notes per 60 seconds per user.
-        const recent = await env.DB.prepare(
-          "SELECT COUNT(*) AS n FROM notes WHERE user_id = ? AND created_at > ?"
-        )
-          .bind(userId, Date.now() - 60_000)
-          .first<{ n: number }>();
-        if ((recent?.n ?? 0) >= 5) {
-          return json({ error: "too many notes, slow down" }, 429);
-        }
-        const body = (await req.json().catch(() => ({}))) as { body?: string };
-        if (!body.body || !body.body.trim()) return json({ error: "missing body" }, 400);
-        await addNote(env, viewingDate(new Date()), userId, body.body);
-        return json({ ok: true });
-      }
-
       if (url.pathname === "/api/vote" && req.method === "POST") {
         const userId = req.headers.get("x-user-id");
         if (!userId) return json({ error: "missing x-user-id" }, 400);
@@ -151,30 +113,25 @@ export default {
         if (userName) await upsertUser(env, userId, userName);
         const body = (await req.json().catch(() => ({}))) as {
           restaurant_id?: string;
-          action?: "add" | "remove" | "clear";
+          action?: "add" | "clear";
         };
         const voteDate = viewingDate(new Date());
-        // Four modes:
-        //   - { action: "clear" }                     wipe all of the user's votes (new UI re-vote)
-        //   - { restaurant_id }                       legacy single-vote replace (old UI)
-        //   - { restaurant_id, action: "add" }        multi-vote: add this pick (new UI)
-        //   - { restaurant_id, action: "remove" }     multi-vote: drop this pick (new UI)
+        // Two modes:
+        //   - { action: "clear" }                       wipe all of the user's votes
+        //   - { restaurant_id, action: "add" }          add this pick (mutual exclusion
+        //                                               between "protest" and the rest is
+        //                                               handled in addVote)
         if (body.action === "clear") {
           await clearVotes(env, voteDate, userId);
           return json({ ok: true, myVotes: [] });
         }
+        if (body.action !== "add") return json({ error: "invalid action" }, 400);
         if (!body.restaurant_id) return json({ error: "missing restaurant_id" }, 400);
         const restaurants = await listRestaurants(env);
         if (!restaurants.some(r => r.id === body.restaurant_id)) {
           return json({ error: "unknown restaurant" }, 400);
         }
-        if (body.action === "add") {
-          await addVote(env, voteDate, userId, body.restaurant_id);
-        } else if (body.action === "remove") {
-          await removeVote(env, voteDate, userId, body.restaurant_id);
-        } else {
-          await replaceVotes(env, voteDate, userId, body.restaurant_id);
-        }
+        await addVote(env, voteDate, userId, body.restaurant_id);
         const myVotes = await getMyVotes(env, voteDate, userId);
         return json({ ok: true, myVotes });
       }

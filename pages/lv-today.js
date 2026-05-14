@@ -273,7 +273,7 @@
     // fresh swipe session locally, jump straight to the summary. The
     // `revoting` flag is set by "Change my vote" so the user gets to re-swipe
     // even before the async server-clear completes.
-    const serverHasVotes = (d.myVotes && d.myVotes.length > 0) || !!d.myVote;
+    const serverHasVotes = Array.isArray(d.myVotes) && d.myVotes.length > 0;
     const apiVoted = serverHasVotes
       && !state.protestActive
       && Object.keys(state.actions).length === 0
@@ -486,7 +486,7 @@
     // votes. Local state is authoritative for the current session; server
     // votes catch the cross-page-load case.
     const localPicks = Object.entries(state.actions).filter(([, a]) => a === "vote").map(([id]) => id);
-    const serverPicks = Array.isArray(d.myVotes) ? d.myVotes : (d.myVote ? [d.myVote] : []);
+    const serverPicks = Array.isArray(d.myVotes) ? d.myVotes : [];
     const allPicks = Array.from(new Set([...localPicks, ...serverPicks]));
     const nonProtestPicks = allPicks.filter(id => id !== "protest");
     const protestActive = state.protestActive || allPicks.includes("protest");
@@ -638,9 +638,9 @@
         state.exitState = null;
         state.drag = { dx: 0, dy: 0, active: false };
         renderAll();
-        // Legacy replace-all: protest is mutually exclusive with everything
-        // else (see worker mutual-exclusion logic), so a single replace works.
-        try { await apiVote("protest"); await reload(); }
+        // addVote enforces mutual exclusion: adding "protest" clears any
+        // non-protest rows server-side in the same batch.
+        try { await apiVote("protest", "add"); await reload(); }
         catch (e) { console.warn("protest vote failed", e); }
       }, EXIT_MS);
       return;
@@ -671,9 +671,9 @@
         try { await apiVote(r.id, "add"); await reload({ keepActions: true }); }
         catch (e) { state.error = e.message; renderAll(); }
       } else if (allSkipped) {
-        // Legacy replace-all on the protest restaurant — worker mutual-exclusion
-        // takes care of clearing any stray non-protest rows.
-        try { await apiVote("protest"); await reload(); }
+        // addVote on "protest" clears any stray non-protest rows in the same
+        // batch via the worker's mutual-exclusion logic.
+        try { await apiVote("protest", "add"); await reload(); }
         catch (e) { console.warn("auto-protest failed", e); }
       }
     }, EXIT_MS);
