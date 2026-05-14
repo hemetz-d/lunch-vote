@@ -53,6 +53,18 @@
     document.documentElement.style.setProperty("--accent", a.color);
     updateThemeColorMeta();
   }
+  // Avatar color is intentionally separate from the UI accent so that picking
+  // a tile color in the name modal doesn't repaint the rest of the chrome.
+  // Falls back to the current UI accent so first-time users (and users
+  // upgrading from before this split) see a sensible starting color.
+  function getAvatar() {
+    const v = localStorage.getItem("lvn-avatar");
+    return ACCENTS.find(a => a.id === v) ? v : getAccent();
+  }
+  function setAvatar(name) {
+    if (!ACCENTS.find(a => a.id === name)) return;
+    localStorage.setItem("lvn-avatar", name);
+  }
   function updateThemeColorMeta() {
     const bg = getComputedStyle(document.documentElement).getPropertyValue("--paper").trim();
     const meta = document.querySelector('meta[name="theme-color"]');
@@ -106,6 +118,7 @@
     if (user) {
       headers["x-user-id"] = user.id;
       headers["x-user-name"] = user.name;
+      headers["x-user-accent"] = getAvatar();
     }
     const res = await fetch(`${API}/api/today`, { headers });
     if (!res.ok) throw new Error(`/api/today ${res.status}`);
@@ -132,6 +145,7 @@
         "content-type": "application/json",
         "x-user-id": user.id,
         "x-user-name": user.name,
+        "x-user-accent": getAvatar(),
       },
       body: JSON.stringify({ restaurant_id: restaurantId, action }),
     });
@@ -151,6 +165,7 @@
         "content-type": "application/json",
         "x-user-id": user.id,
         "x-user-name": user.name,
+        "x-user-accent": getAvatar(),
       },
       body: JSON.stringify({ action: "clear" }),
     });
@@ -242,8 +257,9 @@
     return { container: h("div", { class: "controls" }, themeBtn, accentBtn, nameBtn), syncLabels };
   }
 
-  // Avatar pile. ids = array of names. We hash name → tone slot so colors are
-  // stable per person across renders.
+  // Avatar pile. Color comes from the voter's chosen accent (round-tripped
+  // via the API). Legacy voters that pre-date the accent column fall back
+  // to a stable hash-of-name pastel so they're still visually distinct.
   function toneFor(name) {
     const s = String(name || "?");
     let hash = 0;
@@ -251,10 +267,15 @@
     const tones = ["a", "b", "c", "d", "e", "f"];
     return tones[hash % tones.length];
   }
+  const ACCENT_IDS = new Set(ACCENTS.map(a => a.id));
   function avatar(voter) {
     const name = typeof voter === "string" ? voter : (voter?.name || voter?.id || "?");
+    const accent = typeof voter === "object" && voter?.accent && ACCENT_IDS.has(voter.accent)
+      ? voter.accent
+      : null;
     const initial = name.trim()[0]?.toUpperCase() || "?";
-    return h("span", { class: `av t-${toneFor(name)}`, title: name }, initial);
+    const cls = accent ? `av acc-${accent}` : `av t-${toneFor(name)}`;
+    return h("span", { class: cls, title: name }, initial);
   }
   function pile(voters, max = 4) {
     const list = (voters || []).slice();
@@ -275,22 +296,34 @@
 
     const user = getUser();
     let typed = user?.name || "";
-    let chosenAccent = getAccent();
+    let chosenAvatar = getAvatar();
+
+    // Live preview tile — shows what the voter pile will display for this
+    // user. Updates as the name is typed and as a swatch is picked, so the
+    // link between the swatch row and the tile is obvious.
+    const preview = h("span", { class: `av acc-${chosenAvatar}`, "aria-hidden": "true" });
+    function refreshPreview() {
+      const initial = typed.trim()[0]?.toUpperCase() || "?";
+      preview.textContent = initial;
+      preview.className = `av acc-${chosenAvatar}`;
+    }
+    refreshPreview();
 
     const input = h("input", {
       type: "text", value: typed, placeholder: "Jane from Marketing", autocomplete: "off",
-      onInput: (e) => { typed = e.target.value; saveBtn.disabled = !typed.trim(); },
+      onInput: (e) => { typed = e.target.value; saveBtn.disabled = !typed.trim(); refreshPreview(); },
       onKeyDown: (e) => { if (e.key === "Enter" && typed.trim()) commit(); },
     });
-    const swatchRow = h("div", { class: "swatch-row", role: "radiogroup", "aria-label": "Accent" });
+    const swatchRow = h("div", { class: "swatch-row", role: "radiogroup", "aria-label": "Avatar color" });
     for (const a of ACCENTS) {
       const b = h("button", {
         type: "button", class: "swatch", "aria-label": a.id,
         style: { background: a.color },
-        "aria-pressed": String(a.id === chosenAccent),
+        "aria-pressed": String(a.id === chosenAvatar),
         onClick: () => {
-          chosenAccent = a.id;
+          chosenAvatar = a.id;
           for (const c of swatchRow.children) c.setAttribute("aria-pressed", String(c.getAttribute("aria-label") === a.id));
+          refreshPreview();
         },
       });
       swatchRow.append(b);
@@ -300,8 +333,10 @@
 
     const modal = h("div", { class: "modal", onClick: (e) => e.stopPropagation() },
       h("h2", null, "What's your name?"),
-      h("p", null, "Used to label your vote. Pick a color so the avatar pile reflects you."),
-      input, swatchRow,
+      h("p", null, "Used to label your vote in the pile."),
+      h("div", { class: "name-row" }, preview, input),
+      h("label", { class: "field-label" }, "Your avatar color"),
+      swatchRow,
       h("div", { class: "actions" }, saveBtn),
     );
     const overlay = h("div", { class: "overlay", onClick: () => { if (user && onCancel) close(false); } }, modal);
@@ -310,7 +345,7 @@
 
     function commit() {
       if (!typed.trim()) return;
-      setAccent(chosenAccent);
+      setAvatar(chosenAvatar);
       const u = ensureUser(typed.trim());
       close(true);
       if (onSave) onSave(u);
@@ -379,6 +414,18 @@
   for (const key of ["lvn-brand", "lunch-vote-theme-pref", "lunch-vote-accent", "lunch-vote-view"]) {
     try { localStorage.removeItem(key); } catch {}
   }
+
+  // One-time identity reset. Bumping this version forces every returning
+  // browser to drop its stored user once, so the next page load re-prompts
+  // for a name. After the wipe the new identity is persisted normally.
+  const IDENTITY_RESET_VERSION = "1";
+  try {
+    if (localStorage.getItem("lvn-identity-reset") !== IDENTITY_RESET_VERSION) {
+      localStorage.removeItem("lunch-vote-user");
+      localStorage.removeItem("lvn-avatar");
+      localStorage.setItem("lvn-identity-reset", IDENTITY_RESET_VERSION);
+    }
+  } catch {}
 
   // Expose only what page scripts actually consume. Internal helpers
   // (setUser, avatar, toneFor, API, ACCENTS) stay closed-over inside this
