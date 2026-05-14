@@ -1,0 +1,1013 @@
+/* Lunch Vote — Slate Reels (hi-fi clickable prototype)
+ * Single self-contained stylesheet. No external deps except Google Fonts.
+ *
+ * Aesthetic: warm cream paper background, dark slate card with wood frame
+ * and chalk text. Colored highlights all flow from --accent, which the user
+ * cycles via the header swatch.
+ */
+
+/* ---------- Tokens ---------- */
+
+:root {
+  color-scheme: light;
+  --paper: #fbf8f1;
+  --paper-2: #f3eee0;
+  --card-bg: #ffffff;
+  --ink: #1a1a1a;
+  --ink-2: #3a3a3a;
+  --muted: #6f6a5e;
+  --faint: #aaa49a;
+  --line: #e7e4dc;
+  --line-2: #d1cdc1;
+
+  --slate: #1f2520;
+  --slate-2: #2a302a;
+  --wood: #5b3a1e;
+  --wood-2: #4a2e15;
+  --chalk: #f6f3e8;
+  --chalk-soft: rgba(246, 243, 232, 0.7);
+  --chalk-dim: rgba(246, 243, 232, 0.45);
+
+  --accent: #c6442b;
+
+  --shadow-sm: 0 1px 2px rgba(20, 18, 14, 0.05), 0 1px 4px rgba(20, 18, 14, 0.06);
+  --shadow-md: 0 6px 18px rgba(20, 18, 14, 0.10), 0 1px 3px rgba(20, 18, 14, 0.06);
+  --shadow-card: 0 18px 40px rgba(20, 18, 14, 0.22), 0 4px 12px rgba(20, 18, 14, 0.12);
+
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-card: 22px;
+
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --max: 1280px;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #161512;
+  --paper-2: #1f1d18;
+  --card-bg: #1f1d18;
+  --ink: #ece7da;
+  --ink-2: #c8c2b3;
+  --muted: #8e8779;
+  --faint: #5d574c;
+  --line: #2e2b24;
+  --line-2: #3d3a32;
+}
+
+/* ---------- Base ---------- */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button { font-family: inherit; }
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.script {
+  font-family: "Caveat", cursive;
+  letter-spacing: -0.005em;
+}
+
+/* ---------- App layout ---------- */
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(251, 248, 241, 0.85);
+  backdrop-filter: saturate(140%) blur(10px);
+  -webkit-backdrop-filter: saturate(140%) blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+html[data-theme="dark"] .header {
+  background: rgba(22, 21, 18, 0.85);
+}
+
+.header-inner {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.brand h1 {
+  font-family: "Caveat", cursive;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
+  line-height: 1;
+}
+.brand .date {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 2px 0 0;
+}
+
+.controls { display: flex; gap: 8px; align-items: center; }
+
+.icon-btn {
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  height: 36px; min-width: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  transition: border-color 0.15s var(--ease), background 0.15s var(--ease);
+}
+.icon-btn:hover { border-color: var(--line-2); }
+.icon-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.accent-swatch {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--accent);
+  border: 1.5px solid rgba(0,0,0,0.15);
+  display: inline-block;
+}
+
+/* Tiny admin-only refresh control, fixed at the bottom-right of the page.
+   Deliberately faint so it doesn't compete with the voting UI — hover
+   reveals it. Spins while a refresh request is in flight. */
+.refresh-admin {
+  position: fixed;
+  bottom: 14px;
+  right: 14px;
+  z-index: 30;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--card-bg);
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.45;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.15s var(--ease), color 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+.refresh-admin:hover {
+  opacity: 1;
+  color: var(--ink);
+  border-color: var(--line-2);
+}
+.refresh-admin:disabled { cursor: wait; }
+.refresh-admin.spinning { animation: refresh-spin 1s linear infinite; opacity: 1; color: var(--ink); }
+@keyframes refresh-spin {
+  to { transform: rotate(360deg); }
+}
+.accent-swatch.pulse {
+  animation: accent-swatch-pulse 420ms cubic-bezier(0.2, 0, 0, 1);
+}
+@keyframes accent-swatch-pulse {
+  0%   { transform: scale(1);    box-shadow: 0 0 0 0   var(--accent); }
+  45%  { transform: scale(1.55); box-shadow: 0 0 0 6px rgba(0,0,0,0); }
+  100% { transform: scale(1);    box-shadow: 0 0 0 0   transparent;   }
+}
+
+/* ---------- Stage layout ---------- */
+
+.layout {
+  flex: 1;
+  max-width: var(--max);
+  margin: 0 auto;
+  width: 100%;
+  padding: 18px 24px 32px;
+  display: grid;
+  grid-template-columns: 260px 1fr 280px;
+  gap: 28px;
+  align-items: start;
+}
+
+.rail { display: flex; flex-direction: column; gap: 14px; }
+
+.rail-card {
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+.rail-card h3 {
+  margin: 0 0 10px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* ---------- Tally rail ---------- */
+
+.tally-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 14px;
+}
+.tally-row + .tally-row { border-top: 1px solid var(--line); }
+.tally-row .name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+.tally-row .name .emoji { margin-right: 4px; }
+.tally-row .pile { flex-shrink: 0; }
+.tally-row .count {
+  font-family: "Caveat", cursive;
+  font-size: 22px;
+  line-height: 1;
+  min-width: 22px;
+  text-align: right;
+  color: var(--ink);
+}
+.tally-row.leading .count { color: var(--accent); font-weight: 700; }
+.tally-row.protest {
+  color: var(--muted);
+  font-size: 13px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line-2);
+  margin-top: 4px;
+}
+
+/* ---------- Alert card ---------- */
+
+.alert-card {
+  background: linear-gradient(135deg, #fff4e0, #ffe8d1);
+  border: 1px solid #f0c37a;
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  color: #8a5a14;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+html[data-theme="dark"] .alert-card {
+  background: linear-gradient(135deg, #2a220f, #35291b);
+  border-color: #5c4420;
+  color: #e0b37a;
+}
+.alert-card .emoji { font-size: 20px; line-height: 1.2; }
+.alert-card strong { font-weight: 600; }
+.alert-card p { margin: 0; font-size: 13px; line-height: 1.4; }
+
+/* ---------- Week strip ---------- */
+
+.week {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+}
+.week .day {
+  text-align: center;
+  padding: 6px 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card-bg);
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.15s var(--ease);
+}
+.week .day:hover { background: var(--paper-2); }
+.week .day .num {
+  display: block;
+  font-family: "Caveat", cursive;
+  font-size: 19px;
+  line-height: 1;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+.week .day.today {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.week .day.today .num { color: #fff; }
+.week .day.future { opacity: 0.55; }
+
+/* ---------- Up-next rail ---------- */
+
+.up-next-card {
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), transform 0.15s var(--ease);
+}
+.up-next-card:hover { border-color: var(--line-2); transform: translateY(-1px); }
+.up-next-card .emoji {
+  font-size: 24px;
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: var(--paper-2);
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.up-next-card .body { min-width: 0; flex: 1; }
+.up-next-card .name {
+  font-family: "Caveat", cursive;
+  font-size: 18px;
+  line-height: 1.1;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.up-next-card .sub {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.up-next-card .pos {
+  font-size: 11px;
+  color: var(--faint);
+  flex-shrink: 0;
+}
+.up-next-card.acted { opacity: 0.6; }
+.up-next-card.acted.voted { border-color: var(--accent); }
+.up-next-card.acted .pos { font-weight: 600; color: var(--ink); }
+
+/* ---------- Stage / card ---------- */
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.progress-bars {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  max-width: 460px;
+  height: 3px;
+}
+.progress-bars .bar {
+  flex: 1;
+  background: var(--line-2);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+.progress-bars .bar .fill {
+  position: absolute;
+  inset: 0;
+  background: var(--ink);
+  transform-origin: left center;
+  transform: scaleX(0);
+  transition: transform 0.45s var(--ease-out);
+}
+.progress-bars .bar.done .fill { transform: scaleX(1); }
+.progress-bars .bar.current .fill { transform: scaleX(0.6); background: var(--accent); }
+.progress-bars .bar.voted .fill { background: var(--accent); }
+
+.card-frame {
+  position: relative;
+  width: 460px;
+  height: 640px;
+  perspective: 1200px;
+  user-select: none;
+  touch-action: pan-y;
+}
+
+.card-stack {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---------- The card (Slate) ---------- */
+
+.card {
+  position: absolute;
+  inset: 0;
+  background: var(--slate);
+  border: 6px solid var(--wood);
+  border-radius: var(--radius-card);
+  box-shadow:
+    var(--shadow-card),
+    inset 0 0 0 1px var(--wood-2),
+    inset 0 0 24px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  color: var(--chalk);
+  cursor: grab;
+  transition:
+    transform 0.45s var(--ease-out),
+    opacity 0.4s var(--ease);
+}
+.card.top { z-index: 4; }
+.card.behind-1 { z-index: 3; transform: translateY(10px) scale(0.97); opacity: 1; }
+.card.behind-2 { z-index: 2; transform: translateY(22px) scale(0.93); opacity: 0.95; }
+.card.behind-3 { z-index: 1; transform: translateY(34px) scale(0.89); opacity: 0.9; }
+.card.dragging { transition: none; cursor: grabbing; }
+/* Entering state — when a new card takes the top spot after a commit, animate
+   it from the previous behind-1 geometry up into position. CSS animation
+   (not transition) so it triggers immediately on mount without a reflow
+   dance, and so it doesn't interfere with the .card transition used for
+   exits and behind-card shifts. */
+@keyframes card-settle {
+  from { transform: translateY(10px) scale(0.97); }
+  to   { transform: translateY(0)    scale(1);    }
+}
+.card.top.entering {
+  animation: card-settle 0.34s var(--ease-out);
+}
+/* Hover affordance on the top card so it reads as draggable. Suppressed
+   during the drag and during the exit animation so we don't fight the inline
+   transform or the exit transform.
+
+   The wiggle animation plays once each time the cursor enters — a one-shot
+   left/right shimmy that hints "you can drag me sideways". Static lift +
+   stronger shadow remains for the full hover duration. */
+@keyframes card-wiggle {
+  0%   { transform: translateY(-4px) rotate(0); }
+  20%  { transform: translateY(-4px) rotate(-1.6deg); }
+  40%  { transform: translateY(-4px) rotate(1.1deg); }
+  60%  { transform: translateY(-4px) rotate(-0.7deg); }
+  80%  { transform: translateY(-4px) rotate(0.35deg); }
+  100% { transform: translateY(-4px) rotate(0); }
+}
+.card.top:not(.dragging):not(.exit-vote):not(.exit-skip):not(.exit-protest):hover {
+  transform: translateY(-4px);
+  box-shadow:
+    var(--shadow-card),
+    0 22px 48px rgba(20, 18, 14, 0.30),
+    inset 0 0 0 1px var(--wood-2),
+    inset 0 0 24px rgba(0, 0, 0, 0.45);
+  animation: card-wiggle 0.9s ease-in-out;
+}
+.card.exit-vote {
+  transform: translate(180%, -8%) rotate(20deg);
+  opacity: 0;
+}
+.card.exit-skip {
+  transform: translate(-180%, -8%) rotate(-20deg);
+  opacity: 0;
+}
+.card.exit-protest {
+  transform: translateY(140%) rotate(-4deg);
+  opacity: 0;
+}
+.card.gone { display: none; }
+
+/* Chalk noise + soft vignette on top */
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 25% 15%, rgba(255,255,255,0.06), transparent 55%),
+    radial-gradient(ellipse at 75% 75%, rgba(255,255,255,0.045), transparent 55%),
+    repeating-linear-gradient(110deg, rgba(255,255,255,0.012) 0 2px, transparent 2px 6px);
+}
+/* Wood inner highlight */
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 2px rgba(255, 234, 200, 0.05);
+}
+
+/* ---------- Card content ---------- */
+
+.card-content {
+  position: absolute;
+  inset: 20px 20px 20px 24px;
+  display: flex;
+  flex-direction: column;
+  z-index: 5;
+}
+
+.card-progress {
+  position: absolute;
+  top: 14px; left: 14px; right: 14px;
+  display: flex;
+  gap: 4px;
+  z-index: 10;
+}
+.card-progress .seg {
+  flex: 1;
+  height: 3px;
+  background: rgba(246, 243, 232, 0.22);
+  border-radius: 2px;
+}
+.card-progress .seg.done { background: var(--chalk); }
+.card-progress .seg.current { background: var(--chalk); }
+
+.card-counter {
+  position: absolute;
+  top: 36px;
+  right: 16px;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--chalk-dim);
+  z-index: 10;
+}
+
+.card-eyebrow {
+  margin-top: 22px;
+  font-size: 11px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--chalk-dim);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-eyebrow .star { color: var(--accent); }
+
+.card-title {
+  font-family: "Caveat", cursive;
+  font-size: 52px;
+  line-height: 1;
+  margin-top: 4px;
+  color: var(--chalk);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.card-title .emoji {
+  font-size: 44px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 0 rgba(0,0,0,0.4));
+}
+.card-title .name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-sub {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--chalk-soft);
+  font-style: italic;
+}
+
+.card-divider {
+  margin: 18px 0 14px;
+  height: 8px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 8'><path d='M0 4 Q 7.5 0 15 4 T 30 4 T 45 4 T 60 4' fill='none' stroke='%23f6f3e8' stroke-width='1.5' opacity='0.55'/></svg>");
+  background-repeat: repeat-x;
+  background-size: 60px 8px;
+}
+
+.card-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.card-menu .dish {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.card-menu .dish .row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.card-menu .dish .name {
+  font-family: "Caveat", cursive;
+  font-size: 28px;
+  line-height: 1.1;
+  color: var(--chalk);
+  min-width: 0;
+  flex: 1;
+}
+.card-menu .dish .price {
+  font-family: "Caveat", cursive;
+  font-size: 28px;
+  line-height: 1;
+  color: var(--chalk);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.card-menu .dish .note {
+  font-size: 12px;
+  color: var(--chalk-soft);
+  font-style: italic;
+  margin-top: 2px;
+}
+.card-menu .dish.beloved .name {
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 5px;
+}
+
+.card-spacer { flex: 1; }
+
+.card-foot {
+  border-top: 1px dashed rgba(246, 243, 232, 0.32);
+  padding-top: 12px;
+  /* Keep the foot content clear of the action rail in the bottom-right
+     (rail is ~58px wide + 14px right offset = ~72px reserved). */
+  padding-right: 76px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.card-foot .voters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--chalk-soft);
+}
+.card-foot .voters .pile { display: flex; }
+.card-foot .leading {
+  font-family: "Caveat", cursive;
+  font-size: 22px;
+  color: var(--accent);
+}
+
+/* ---------- "Beloved" badge ---------- */
+
+.beloved-pin {
+  position: absolute;
+  top: 16px;
+  left: 18px;
+  z-index: 12;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  transform: rotate(-4deg);
+  box-shadow: 2px 2px 0 rgba(0,0,0,0.4);
+  border: 1.5px solid #1a1a1a;
+}
+
+/* ---------- Stamps (voted / skipped overlay) ---------- */
+
+.stamp {
+  position: absolute;
+  top: 38%;
+  font-family: "Caveat", cursive;
+  font-size: 64px;
+  font-weight: 700;
+  padding: 6px 22px;
+  border: 5px double currentColor;
+  background: rgba(255,255,255,0.08);
+  z-index: 14;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s var(--ease);
+}
+.stamp.vote {
+  left: 24px;
+  color: var(--accent);
+  transform: rotate(-12deg);
+  transition: opacity 0.15s var(--ease), transform 0.15s var(--ease);
+}
+.stamp.skip {
+  right: 24px;
+  color: #d4d0c4;
+  transform: rotate(12deg);
+  transition: opacity 0.15s var(--ease), transform 0.15s var(--ease);
+}
+/* Preview stamp — user is dragging in this direction but hasn't crossed the
+   commit threshold yet. Dim + slightly smaller so it reads as "tentative". */
+.card.show-vote .stamp.vote { opacity: 0.35; transform: rotate(-12deg) scale(0.92); }
+.card.show-skip .stamp.skip { opacity: 0.35; transform: rotate(12deg) scale(0.92); }
+/* Ready stamp — past the commit threshold; releasing now fires the action.
+   Full opacity + slight grow signals "yes, this is locked in". */
+.card.ready-vote .stamp.vote { opacity: 1; transform: rotate(-12deg) scale(1.06); }
+.card.ready-skip .stamp.skip { opacity: 1; transform: rotate(12deg) scale(1.06); }
+/* Colored ring on the card itself when commit-ready — direction-coded so the
+   user can tell at a glance which action is about to fire. */
+.card.ready-vote {
+  box-shadow:
+    var(--shadow-card),
+    0 0 0 3px var(--accent),
+    0 0 28px rgba(198, 68, 43, 0.45),
+    inset 0 0 0 1px var(--wood-2),
+    inset 0 0 24px rgba(0, 0, 0, 0.45);
+}
+.card.ready-skip {
+  box-shadow:
+    var(--shadow-card),
+    0 0 0 3px #d4d0c4,
+    0 0 28px rgba(212, 208, 196, 0.35),
+    inset 0 0 0 1px var(--wood-2),
+    inset 0 0 24px rgba(0, 0, 0, 0.45);
+}
+
+/* ---------- Action rail ---------- */
+
+.action-rail {
+  position: absolute;
+  bottom: 22px;
+  right: 14px;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.action-btn {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  border: 2px solid #1a1a1a;
+  background: rgba(255,255,255,0.92);
+  color: #1a1a1a;
+  cursor: pointer;
+  font-size: 22px;
+  display: inline-flex; align-items: center; justify-content: center;
+  box-shadow: 2px 2px 0 #1a1a1a, 0 6px 14px rgba(0,0,0,0.25);
+  transition: transform 0.08s var(--ease), box-shadow 0.15s var(--ease);
+}
+.action-btn:hover { transform: translateY(-1px); }
+.action-btn:active { transform: translateY(1px); box-shadow: 1px 1px 0 #1a1a1a; }
+.action-btn.vote {
+  background: var(--accent);
+  color: #fff;
+  width: 58px; height: 58px;
+  font-size: 26px;
+}
+.action-btn.skip { width: 48px; height: 48px; font-size: 20px; }
+.action-label {
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--chalk);
+  background: rgba(0,0,0,0.55);
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-top: -4px;
+}
+
+/* ---------- Hints below card ---------- */
+
+.swipe-hints {
+  display: flex;
+  width: 100%;
+  max-width: 460px;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--muted);
+  padding: 0 4px;
+}
+.swipe-hints .pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+/* ---------- Tabs (Today | Week) ---------- */
+
+.wo-tabs {
+  display: inline-flex;
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px;
+}
+.wo-tabs a {
+  text-decoration: none;
+  color: var(--muted);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.wo-tabs a.active {
+  background: var(--accent);
+  color: #fff;
+}
+.wo-tabs a:hover:not(.active) { color: var(--ink); }
+
+/* ---------- Avatars ---------- */
+
+.av {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink);
+  background: #f3d246;
+  color: var(--ink);
+  font-size: 11px; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-left: -6px;
+  flex-shrink: 0;
+}
+.av:first-child { margin-left: 0; }
+.av.t-a { background: #f3d246; }
+.av.t-b { background: #d6e9d2; }
+.av.t-c { background: #fbe1d6; }
+.av.t-d { background: #d2e2f5; }
+.av.t-e { background: #f0d2e2; }
+.av.t-f { background: #e2dcf5; }
+.av.plus { background: #fff; }
+/* on dark card */
+.card .av { border-color: var(--chalk); color: var(--ink); }
+
+/* ---------- End-of-stack summary screen ---------- */
+
+.summary {
+  width: 100%;
+  max-width: 540px;
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 28px;
+  box-shadow: var(--shadow-md);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+.summary h2 {
+  font-family: "Caveat", cursive;
+  font-size: 46px;
+  margin: 0;
+  line-height: 1;
+  color: var(--ink);
+}
+.summary .pick {
+  margin-top: 4px;
+  padding: 18px 22px;
+  background: var(--paper-2);
+  border: 1.5px solid var(--accent);
+  border-radius: 14px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+.summary .pick .name {
+  font-family: "Caveat", cursive;
+  font-size: 36px;
+  line-height: 1.05;
+  color: var(--ink);
+}
+/* Protest variant — fixed red palette regardless of user accent / theme. */
+.summary.protest .pick { background: #fde7e7; border-color: #9c2a2a; }
+.summary.protest .pick .name { color: #7c1e1e; }
+.summary .pick .meta { font-size: 13px; color: var(--muted); }
+.summary .actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.btn {
+  border: 1px solid var(--line);
+  background: var(--card-bg);
+  color: var(--ink);
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), background 0.15s var(--ease);
+}
+.btn:hover { border-color: var(--line-2); }
+.btn.primary {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+}
+.btn.primary:hover { background: #b13a23; border-color: #b13a23; }
+
+/* ---------- Name modal ---------- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 18, 14, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 100;
+  animation: fade-in 0.2s var(--ease);
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.modal {
+  background: var(--card-bg);
+  border-radius: 16px;
+  padding: 22px;
+  max-width: 380px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--line);
+  animation: pop-in 0.25s var(--ease-out);
+}
+@keyframes pop-in {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.modal h2 {
+  font-family: "Caveat", cursive;
+  font-size: 32px;
+  margin: 0;
+  line-height: 1;
+}
+.modal p { margin: 0; color: var(--muted); font-size: 14px; }
+.modal input[type="text"] {
+  font: inherit;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--ink);
+  outline: none;
+}
+.modal input[type="text"]:focus { border-color: var(--accent); }
+.swatch-row { display: flex; gap: 10px; justify-content: center; margin: 6px 0 4px; }
+.swatch {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+}
+.swatch[aria-pressed="true"] { border-color: var(--ink); }
+.modal .actions { display: flex; justify-content: flex-end; }
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 960px) {
+  .layout {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding: 16px;
+  }
+  .rail { order: 2; }
+  .rail-right { order: 3; }
+  .stage { order: 1; }
+  .card-frame { width: 100%; max-width: 420px; height: 600px; }
+  .progress-bars, .swipe-hints { max-width: 420px; }
+}
+
+@media (max-width: 560px) {
+  .header-inner { padding: 12px 16px; }
+  .brand h1 { font-size: 26px; }
+  .brand .date { font-size: 12px; }
+  .layout { padding: 12px; gap: 14px; }
+  .card-frame { width: 100%; max-width: 400px; height: 580px; }
+  .progress-bars, .swipe-hints { max-width: 400px; }
+  .card-title { font-size: 44px; }
+  .card-title .emoji { font-size: 36px; }
+  .card-menu .dish .name, .card-menu .dish .price { font-size: 24px; }
+}

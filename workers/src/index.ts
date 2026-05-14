@@ -7,8 +7,12 @@ import {
   recordSourceError,
   getToday,
   getWeekMenus,
-  castVote,
+  replaceVotes,
+  addVote,
+  removeVote,
+  clearVotes,
   getMyVote,
+  getMyVotes,
   upsertUser,
   addNote,
   listNotes,
@@ -20,12 +24,14 @@ import { NoodleKingSource } from "./sources/noodle-king.js";
 import { FerdinandoSource } from "./sources/ferdinando.js";
 import { RadatzSource } from "./sources/radatz.js";
 import { OdysseusSource } from "./sources/odysseus.js";
+import { SparSource } from "./sources/spar.js";
 
 const SOURCES: MenuSource[] = [
   new FerdinandoSource(),
   new RadatzSource(),
   new NoodleKingSource(),
   new OdysseusSource(),
+  new SparSource(),
 ];
 
 const CORS_HEADERS = {
@@ -59,6 +65,7 @@ export default {
           ? { votes: protestRow.votes, voters: protestRow.voters }
           : { votes: 0, voters: [] };
         const myVote = userId ? await getMyVote(env, viewing, userId) : null;
+        const myVotes = userId ? await getMyVotes(env, viewing, userId) : [];
         const notes = await listNotes(env, viewing);
         const waitingOn = await listWaitingOn(env, viewing, userId || null);
         const badges = await listBadges(env, viewing);
@@ -69,6 +76,7 @@ export default {
           restaurants,
           protest,
           myVote,
+          myVotes,
           notes,
           waitingOn,
           badges,
@@ -78,10 +86,16 @@ export default {
 
       if (url.pathname === "/api/week" && req.method === "GET") {
         const now = new Date();
-        const viewing = viewingDate(now);
-        // weekdayDates wants a Date anchor; parse the viewing date at noon UTC
-        // so weekday math doesn't straddle a boundary.
-        const anchor = new Date(viewing + "T12:00:00Z");
+        // Optional ?date=YYYY-MM-DD lets the UI browse past / future weeks.
+        // When omitted, fall back to the auto-computed viewing date (today,
+        // or the upcoming Monday on weekends).
+        const queryDate = url.searchParams.get("date");
+        const isoPattern = /^\d{4}-\d{2}-\d{2}$/;
+        const anchorIso = queryDate && isoPattern.test(queryDate)
+          ? queryDate
+          : viewingDate(now);
+        const anchor = new Date(anchorIso + "T12:00:00Z");
+        if (isNaN(anchor.getTime())) return json({ error: "invalid date" }, 400);
         const dates = weekdayDates(anchor);
         const menusByDate = await getWeekMenus(env, dates);
         const restaurants = (await listRestaurants(env)).filter(r => r.id !== "protest");
@@ -98,11 +112,14 @@ export default {
             })),
           };
         });
+        const todayIso = isoDate(now);
         return json({
           weekStart: dates[0],
           weekEnd: dates[dates.length - 1],
-          today: isoDate(now),
-          previewing: viewing !== isoDate(now),
+          today: todayIso,
+          // `previewing` now means "the displayed week starts in the future"
+          // — covers both the auto Sat/Sun preview and explicit forward nav.
+          previewing: dates[0] > todayIso,
           days,
         });
       }
@@ -132,15 +149,34 @@ export default {
         if (!userId) return json({ error: "missing x-user-id" }, 400);
         const userName = req.headers.get("x-user-name") ?? "";
         if (userName) await upsertUser(env, userId, userName);
-        const body = (await req.json().catch(() => ({}))) as { restaurant_id?: string };
+        const body = (await req.json().catch(() => ({}))) as {
+          restaurant_id?: string;
+          action?: "add" | "remove" | "clear";
+        };
+        const voteDate = viewingDate(new Date());
+        // Four modes:
+        //   - { action: "clear" }                     wipe all of the user's votes (new UI re-vote)
+        //   - { restaurant_id }                       legacy single-vote replace (old UI)
+        //   - { restaurant_id, action: "add" }        multi-vote: add this pick (new UI)
+        //   - { restaurant_id, action: "remove" }     multi-vote: drop this pick (new UI)
+        if (body.action === "clear") {
+          await clearVotes(env, voteDate, userId);
+          return json({ ok: true, myVotes: [] });
+        }
         if (!body.restaurant_id) return json({ error: "missing restaurant_id" }, 400);
         const restaurants = await listRestaurants(env);
         if (!restaurants.some(r => r.id === body.restaurant_id)) {
           return json({ error: "unknown restaurant" }, 400);
         }
-        const voteDate = viewingDate(new Date());
-        await castVote(env, voteDate, userId, body.restaurant_id);
-        return json({ ok: true });
+        if (body.action === "add") {
+          await addVote(env, voteDate, userId, body.restaurant_id);
+        } else if (body.action === "remove") {
+          await removeVote(env, voteDate, userId, body.restaurant_id);
+        } else {
+          await replaceVotes(env, voteDate, userId, body.restaurant_id);
+        }
+        const myVotes = await getMyVotes(env, voteDate, userId);
+        return json({ ok: true, myVotes });
       }
 
       const refreshMatch = url.pathname.match(/^\/api\/refresh(?:\/([^/]+))?$/);

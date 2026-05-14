@@ -127,17 +127,76 @@ export async function getToday(env: Env, isoDate: string): Promise<TodayForResta
   });
 }
 
-export async function castVote(
+// Replace all of `userId`'s votes for `isoDate` with a single vote for
+// `restaurantId`. Backwards-compat path for the old UI (and the new UI's
+// initial-vote flow that hasn't been migrated to add/remove yet).
+export async function replaceVotes(
+  env: Env,
+  isoDate: string,
+  userId: string,
+  restaurantId: string
+): Promise<void> {
+  const now = Date.now();
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM votes WHERE date = ? AND user_id = ?").bind(isoDate, userId),
+    env.DB.prepare(
+      "INSERT INTO votes (date, user_id, restaurant_id, updated_at) VALUES (?, ?, ?, ?)"
+    ).bind(isoDate, userId, restaurantId, now),
+  ]);
+}
+
+// Add a vote without disturbing the user's other votes. Enforces mutual
+// exclusion between "protest" and non-protest: adding a non-protest vote
+// clears any protest row first, and adding "protest" clears all non-protest
+// rows. Idempotent — re-adding the same vote is a no-op.
+export async function addVote(
+  env: Env,
+  isoDate: string,
+  userId: string,
+  restaurantId: string
+): Promise<void> {
+  const now = Date.now();
+  const stmts: D1PreparedStatement[] = [];
+  if (restaurantId === "protest") {
+    stmts.push(
+      env.DB.prepare(
+        "DELETE FROM votes WHERE date = ? AND user_id = ? AND restaurant_id <> 'protest'"
+      ).bind(isoDate, userId)
+    );
+  } else {
+    stmts.push(
+      env.DB.prepare(
+        "DELETE FROM votes WHERE date = ? AND user_id = ? AND restaurant_id = 'protest'"
+      ).bind(isoDate, userId)
+    );
+  }
+  stmts.push(
+    env.DB.prepare(
+      "INSERT OR IGNORE INTO votes (date, user_id, restaurant_id, updated_at) VALUES (?, ?, ?, ?)"
+    ).bind(isoDate, userId, restaurantId, now)
+  );
+  await env.DB.batch(stmts);
+}
+
+// Remove one specific vote. No-op if the vote didn't exist.
+export async function removeVote(
   env: Env,
   isoDate: string,
   userId: string,
   restaurantId: string
 ): Promise<void> {
   await env.DB.prepare(
-    "INSERT INTO votes (date, user_id, restaurant_id, updated_at) VALUES (?, ?, ?, ?) " +
-      "ON CONFLICT(date, user_id) DO UPDATE SET restaurant_id = excluded.restaurant_id, updated_at = excluded.updated_at"
+    "DELETE FROM votes WHERE date = ? AND user_id = ? AND restaurant_id = ?"
   )
-    .bind(isoDate, userId, restaurantId, Date.now())
+    .bind(isoDate, userId, restaurantId)
+    .run();
+}
+
+// Wipe all of a user's votes for a given date — used by the "Change my vote"
+// flow in the new UI so re-swiping starts from a clean slate.
+export async function clearVotes(env: Env, isoDate: string, userId: string): Promise<void> {
+  await env.DB.prepare("DELETE FROM votes WHERE date = ? AND user_id = ?")
+    .bind(isoDate, userId)
     .run();
 }
 
@@ -357,11 +416,23 @@ function shiftIsoDate(iso: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+// Earliest-by-updated_at vote for this user — preserved for the old UI which
+// only knows about a single myVote string. Returns null if no votes.
 export async function getMyVote(env: Env, isoDate: string, userId: string): Promise<string | null> {
   const row = await env.DB.prepare(
-    "SELECT restaurant_id FROM votes WHERE date = ? AND user_id = ?"
+    "SELECT restaurant_id FROM votes WHERE date = ? AND user_id = ? ORDER BY updated_at ASC LIMIT 1"
   )
     .bind(isoDate, userId)
     .first<{ restaurant_id: string }>();
   return row?.restaurant_id ?? null;
+}
+
+// Full list of the user's votes, in chronological order.
+export async function getMyVotes(env: Env, isoDate: string, userId: string): Promise<string[]> {
+  const { results } = await env.DB.prepare(
+    "SELECT restaurant_id FROM votes WHERE date = ? AND user_id = ? ORDER BY updated_at ASC"
+  )
+    .bind(isoDate, userId)
+    .all();
+  return (results as unknown as { restaurant_id: string }[]).map(r => r.restaurant_id);
 }
