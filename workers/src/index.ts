@@ -29,7 +29,7 @@ const SOURCES: MenuSource[] = [
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
   "access-control-allow-methods": "GET, POST, OPTIONS",
-  "access-control-allow-headers": "content-type, x-user-id, x-user-name",
+  "access-control-allow-headers": "content-type, x-user-id, x-user-name, x-user-accent",
 };
 
 export default {
@@ -44,7 +44,8 @@ export default {
         const viewing = viewingDate(now);
         const userId = req.headers.get("x-user-id") ?? "";
         const userName = req.headers.get("x-user-name") ?? "";
-        if (userId && userName) await upsertUser(env, userId, userName);
+        const userAccent = req.headers.get("x-user-accent") ?? "";
+        if (userId && userName) await upsertUser(env, userId, userName, userAccent);
         const allRestaurants = await getToday(env, viewing);
         const sourceById = new Map(SOURCES.map(s => [s.id, s]));
         // Peel the "protest" pseudo-restaurant off into its own field so the
@@ -110,7 +111,8 @@ export default {
         const userId = req.headers.get("x-user-id");
         if (!userId) return json({ error: "missing x-user-id" }, 400);
         const userName = req.headers.get("x-user-name") ?? "";
-        if (userName) await upsertUser(env, userId, userName);
+        const userAccent = req.headers.get("x-user-accent") ?? "";
+        if (userName) await upsertUser(env, userId, userName, userAccent);
         const body = (await req.json().catch(() => ({}))) as {
           restaurant_id?: string;
           action?: "add" | "clear";

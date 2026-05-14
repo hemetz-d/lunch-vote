@@ -853,6 +853,15 @@ html[data-theme="dark"] .alert-card {
 .av.t-e { background: #f0d2e2; }
 .av.t-f { background: #e2dcf5; }
 .av.plus { background: #fff; }
+/* Accent-tinted avatars — colors mirror ACCENTS in pages/lv-shared.js so
+   each voter's tile matches the accent they picked at signup / in the
+   header swatch. White initial on the saturated fill for contrast. */
+.av.acc-red    { background: #c6442b; color: #fff; }
+.av.acc-orange { background: #c45a1f; color: #fff; }
+.av.acc-green  { background: #3a8e5a; color: #fff; }
+.av.acc-blue   { background: #3a6fb8; color: #fff; }
+.av.acc-purple { background: #5b5fc7; color: #fff; }
+.av.acc-pink   { background: #c43a7a; color: #fff; }
 /* on dark card */
 .card .av { border-color: var(--chalk); color: var(--ink); }
 
@@ -922,7 +931,13 @@ html[data-theme="dark"] .alert-card {
 .btn.primary {
   background: var(--accent); color: #fff; border-color: var(--accent);
 }
-.btn.primary:hover { background: #b13a23; border-color: #b13a23; }
+/* Hover darkens whatever accent is currently active — the previous
+   hardcoded #b13a23 worked only when --accent was red. color-mix is
+   supported in all evergreen browsers since 2023. */
+.btn.primary:hover {
+  background: color-mix(in srgb, var(--accent) 90%, black);
+  border-color: color-mix(in srgb, var(--accent) 90%, black);
+}
 
 /* ---------- Name modal ---------- */
 
@@ -974,7 +989,24 @@ html[data-theme="dark"] .alert-card {
   outline: none;
 }
 .modal input[type="text"]:focus { border-color: var(--accent); }
-.swatch-row { display: flex; gap: 10px; justify-content: center; margin: 6px 0 4px; }
+/* Name row pairs the live avatar preview with the input so the swatch
+   selection has a visible target. Preview tile borrows the .av sizing but
+   is enlarged to roughly match input height for a clean align. */
+.modal .name-row { display: flex; align-items: center; gap: 10px; }
+.modal .name-row input[type="text"] { flex: 1; }
+.modal .name-row .av {
+  width: 34px; height: 34px;
+  font-size: 14px;
+  margin-left: 0;
+}
+.modal .field-label {
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 4px;
+}
+.swatch-row { display: flex; gap: 10px; justify-content: flex-start; margin: 0 0 4px; }
 .swatch {
   width: 26px; height: 26px;
   border-radius: 50%;

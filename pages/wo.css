@@ -215,10 +215,14 @@
   margin-top: 2px;
 }
 
-/* Menu cell content */
+/* Menu cell content. Stretches to the grid row's full height and spreads
+   dishes vertically — without this, a 2-dish day next to a 4-dish day
+   leaves a big empty gap at the bottom of the short cell. */
 .wo-menu {
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
   font-size: 13px;
   color: var(--chalk);
   line-height: 1.25;

@@ -1,12 +1,13 @@
 import type { Env, WeeklyMenu, Option } from "./types.js";
 
 export type RestaurantRow = { id: string; name: string; source_id: string };
+export type Voter = { name: string; accent: string | null };
 export type TodayForRestaurant = {
   id: string;
   name: string;
   options: Option[];
   votes: number;
-  voters: string[];          // display names in vote order (earliest first)
+  voters: Voter[];           // display name + accent, in vote order (earliest first)
   lastFetchedAt?: number;    // ms epoch — null if the source has never succeeded
   lastError?: string;        // most recent fetch error, if any
 };
@@ -78,7 +79,7 @@ export async function getToday(env: Env, isoDate: string): Promise<TodayForResta
     .bind(isoDate)
     .all();
   const { results: voterRows } = await env.DB.prepare(
-    `SELECT v.restaurant_id, u.name, v.updated_at
+    `SELECT v.restaurant_id, u.name, u.accent, v.updated_at
        FROM votes v
        LEFT JOIN users u ON u.id = v.user_id
       WHERE v.date = ?
@@ -98,10 +99,10 @@ export async function getToday(env: Env, isoDate: string): Promise<TodayForResta
       menusByRestaurant.set(r.restaurant_id, []);
     }
   }
-  const votersByRestaurant = new Map<string, string[]>();
-  for (const v of voterRows as unknown as { restaurant_id: string; name: string | null }[]) {
+  const votersByRestaurant = new Map<string, Voter[]>();
+  for (const v of voterRows as unknown as { restaurant_id: string; name: string | null; accent: string | null }[]) {
     const list = votersByRestaurant.get(v.restaurant_id) ?? [];
-    list.push(v.name ?? "anonymous");
+    list.push({ name: v.name ?? "anonymous", accent: v.accent ?? null });
     votersByRestaurant.set(v.restaurant_id, list);
   }
   const statusBySource = new Map<string, { lastFetchedAt?: number; lastError?: string }>();
@@ -168,14 +169,32 @@ export async function clearVotes(env: Env, isoDate: string, userId: string): Pro
     .run();
 }
 
-export async function upsertUser(env: Env, id: string, name: string): Promise<void> {
+// Whitelist of accent ids — mirror of ACCENTS in pages/lv-shared.js. Anything
+// outside this set is treated as "no accent" so the column never holds junk
+// the frontend can't render.
+const VALID_ACCENTS = new Set(["red", "orange", "green", "blue", "purple", "pink"]);
+
+export async function upsertUser(
+  env: Env,
+  id: string,
+  name: string,
+  accent?: string | null
+): Promise<void> {
   const clean = name.trim().slice(0, 80);
   if (!clean) return;
+  // COALESCE(excluded.accent, users.accent) preserves the existing accent
+  // when the caller didn't send one — e.g. older clients that pre-date the
+  // x-user-accent header. Sending a known accent overrides; unknown values
+  // are normalized to NULL by the caller.
+  const accentValue = accent && VALID_ACCENTS.has(accent) ? accent : null;
   await env.DB.prepare(
-    "INSERT INTO users (id, name, updated_at) VALUES (?, ?, ?) " +
-      "ON CONFLICT(id) DO UPDATE SET name = excluded.name, updated_at = excluded.updated_at"
+    "INSERT INTO users (id, name, accent, updated_at) VALUES (?, ?, ?, ?) " +
+      "ON CONFLICT(id) DO UPDATE SET " +
+      "name = excluded.name, " +
+      "accent = COALESCE(excluded.accent, users.accent), " +
+      "updated_at = excluded.updated_at"
   )
-    .bind(id, clean, Date.now())
+    .bind(id, clean, accentValue, Date.now())
     .run();
 }
 
