@@ -62,12 +62,18 @@
   let pendingShameAction = null;
   let activeView = localStorage.getItem("lunch-vote-view") === "week" ? "week" : "today";
 
+  const ACCENTS = ["red", "orange", "green", "blue", "purple", "pink"];
+  const DEFAULT_ACCENT = "red";
+
   // ---------- Event wiring ----------
   document.getElementById("change-name").addEventListener("click", () => openNameModal());
   document.getElementById("name-save").addEventListener("click", saveName);
   document.getElementById("name-input").addEventListener("keydown", e => {
     if (e.key === "Enter") saveName();
   });
+  for (const btn of document.querySelectorAll("#accent-row button")) {
+    btn.addEventListener("click", () => applyAccent(btn.dataset.accent));
+  }
   refreshBtn.addEventListener("click", manualRefresh);
   noteForm.addEventListener("submit", submitNote);
   protestBtn.addEventListener("click", toggleProtest);
@@ -83,9 +89,10 @@
     document.documentElement.dataset.theme = next;
     localStorage.setItem("lunch-vote-theme-pref", next);
     updateThemeIcon();
+    updateThemeColorMeta();
   });
   mqDark.addEventListener("change", () => {
-    if (!localStorage.getItem("lunch-vote-theme-pref")) updateThemeIcon();
+    if (!localStorage.getItem("lunch-vote-theme-pref")) { updateThemeIcon(); updateThemeColorMeta(); }
   });
   function effectiveTheme() {
     const explicit = document.documentElement.dataset.theme;
@@ -105,9 +112,34 @@
   }
   function setUser(user) { localStorage.setItem("lunch-vote-user", JSON.stringify(user)); }
 
+  // ---------- Accent color ----------
+  function getAccent() {
+    const v = localStorage.getItem("lunch-vote-accent");
+    return ACCENTS.includes(v) ? v : DEFAULT_ACCENT;
+  }
+  function applyAccent(name) {
+    const v = ACCENTS.includes(name) ? name : DEFAULT_ACCENT;
+    document.documentElement.dataset.accent = v;
+    localStorage.setItem("lunch-vote-accent", v);
+    updateAccentSwatches(v);
+    updateThemeColorMeta();
+  }
+  function updateAccentSwatches(active) {
+    for (const btn of document.querySelectorAll("#accent-row button")) {
+      btn.setAttribute("aria-pressed", String(btn.dataset.accent === active));
+    }
+  }
+  function updateThemeColorMeta() {
+    const c = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta && c) meta.setAttribute("content", c);
+  }
+  applyAccent(getAccent());
+
   function openNameModal() {
     const user = getUser();
     document.getElementById("name-input").value = user?.name || "";
+    updateAccentSwatches(getAccent());
     nameModal.hidden = false;
     document.getElementById("name-input").focus();
   }
@@ -616,7 +648,8 @@
 
   // ---------- Confetti ----------
   function fireConfetti() {
-    const COLORS = ["#b83a3a", "#ff5e9c", "#ffd93d", "#4ac29a", "#f97e5d", "#7ecff1"];
+    const accentNow = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#b83a3a";
+    const COLORS = [accentNow, "#ff5e9c", "#ffd93d", "#4ac29a", "#f97e5d", "#7ecff1"];
     const N = 80;
     const frag = document.createDocumentFragment();
     for (let i = 0; i < N; i++) {

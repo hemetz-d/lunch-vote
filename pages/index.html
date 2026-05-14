@@ -110,6 +110,31 @@
     }
   }
 
+  /* ---------- Accent presets ----------
+     `red` is the base palette in :root above. Other presets override
+     --accent / --accent-hover / --accent-soft. Light values go on
+     :root[data-accent="X"]; dark values go on the explicit dark and the
+     system-dark blocks, mirroring the structure used for the base palette. */
+  :root[data-accent="orange"] { --accent: #c45a1f; --accent-hover: #a04515; --accent-soft: #fdebd9; }
+  :root[data-accent="green"]  { --accent: #3a8e5a; --accent-hover: #2e7245; --accent-soft: #e1f2e6; }
+  :root[data-accent="blue"]   { --accent: #3a6fb8; --accent-hover: #2e589a; --accent-soft: #e0eaf7; }
+  :root[data-accent="purple"] { --accent: #5b5fc7; --accent-hover: #4a4ea8; --accent-soft: #e7e8f7; }
+  :root[data-accent="pink"]   { --accent: #c43a7a; --accent-hover: #a32e64; --accent-soft: #fbe8f0; }
+
+  html[data-theme="dark"][data-accent="orange"] { --accent: #e8a368; --accent-hover: #f0bd8e; --accent-soft: #2e1f10; }
+  html[data-theme="dark"][data-accent="green"]  { --accent: #7ac49a; --accent-hover: #9ad4b3; --accent-soft: #16271c; }
+  html[data-theme="dark"][data-accent="blue"]   { --accent: #85b3e8; --accent-hover: #a3c5ef; --accent-soft: #162234; }
+  html[data-theme="dark"][data-accent="purple"] { --accent: #8a90f4; --accent-hover: #a4a9f7; --accent-soft: #1d1f3a; }
+  html[data-theme="dark"][data-accent="pink"]   { --accent: #e885b3; --accent-hover: #f0a3c5; --accent-soft: #2e1622; }
+
+  @media (prefers-color-scheme: dark) {
+    html:not([data-theme="light"])[data-accent="orange"] { --accent: #e8a368; --accent-hover: #f0bd8e; --accent-soft: #2e1f10; }
+    html:not([data-theme="light"])[data-accent="green"]  { --accent: #7ac49a; --accent-hover: #9ad4b3; --accent-soft: #16271c; }
+    html:not([data-theme="light"])[data-accent="blue"]   { --accent: #85b3e8; --accent-hover: #a3c5ef; --accent-soft: #162234; }
+    html:not([data-theme="light"])[data-accent="purple"] { --accent: #8a90f4; --accent-hover: #a4a9f7; --accent-soft: #1d1f3a; }
+    html:not([data-theme="light"])[data-accent="pink"]   { --accent: #e885b3; --accent-hover: #f0a3c5; --accent-soft: #2e1622; }
+  }
+
   * { box-sizing: border-box; }
 
   body {
@@ -575,6 +600,25 @@
   }
   #name-modal input[type="text"]:focus { background: var(--card); }
 
+  .accent-row {
+    display: flex; gap: 10px; justify-content: center;
+    margin: 2px 0 4px;
+  }
+  .accent-row button {
+    width: 24px; height: 24px; padding: 0;
+    border-radius: 999px; border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform 0.12s var(--ease), border-color 0.12s var(--ease);
+  }
+  .accent-row button:hover { transform: scale(1.1); }
+  .accent-row button[aria-pressed="true"] { border-color: var(--ink); }
+  .accent-row button[data-accent="red"]    { background: #b83a3a; }
+  .accent-row button[data-accent="orange"] { background: #c45a1f; }
+  .accent-row button[data-accent="green"]  { background: #3a8e5a; }
+  .accent-row button[data-accent="blue"]   { background: #3a6fb8; }
+  .accent-row button[data-accent="purple"] { background: #5b5fc7; }
+  .accent-row button[data-accent="pink"]   { background: #c43a7a; }
+
   /* ---------- Mobile ---------- */
   @media (max-width: 600px) {
     header { padding: 12px 16px; }
@@ -665,6 +709,14 @@
   <div class="box">
     <h2>What's your name?</h2>
     <input id="name-input" type="text" placeholder="Jane from Marketing" autocomplete="off" />
+    <div class="accent-row" id="accent-row" role="radiogroup" aria-label="Page accent color">
+      <button type="button" data-accent="red" aria-pressed="false" aria-label="Red"></button>
+      <button type="button" data-accent="orange" aria-pressed="false" aria-label="Orange"></button>
+      <button type="button" data-accent="green" aria-pressed="false" aria-label="Green"></button>
+      <button type="button" data-accent="blue" aria-pressed="false" aria-label="Blue"></button>
+      <button type="button" data-accent="purple" aria-pressed="false" aria-label="Purple"></button>
+      <button type="button" data-accent="pink" aria-pressed="false" aria-label="Pink"></button>
+    </div>
     <div class="actions">
       <button id="name-save" class="primary">Continue</button>
     </div>
