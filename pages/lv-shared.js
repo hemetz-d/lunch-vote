@@ -122,14 +122,10 @@
     if (!res.ok) throw new Error(`/api/week ${res.status}`);
     return res.json();
   }
-  // action defaults to legacy replace-all (single-vote semantics, used by old UI).
-  // Pass "add" to accumulate multi-vote picks, "remove" to drop one specific vote.
-  async function apiVote(restaurantId, action) {
+  // Adds a single vote. Mutual exclusion with "protest" is handled server-side.
+  async function apiVote(restaurantId, action = "add") {
     const user = getUser();
     if (!user) throw new Error("no user");
-    const body = action
-      ? { restaurant_id: restaurantId, action }
-      : { restaurant_id: restaurantId };
     const res = await fetch(`${API}/api/vote`, {
       method: "POST",
       headers: {
@@ -137,7 +133,7 @@
         "x-user-id": user.id,
         "x-user-name": user.name,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ restaurant_id: restaurantId, action }),
     });
     if (!res.ok) {
       const msg = await res.text().catch(() => "");
@@ -203,11 +199,6 @@
     return el;
   }
   function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
-  function escape(s) {
-    return String(s).replace(/[&<>"']/g, c => ({
-      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-    }[c]));
-  }
 
   // ---------- Shared widgets: Tabs / Header controls ----------
   function makeTabs(active) {
@@ -382,14 +373,17 @@
   // Boot: apply persisted prefs as soon as this script loads.
   setTheme(getTheme());
   setAccent(getAccent());
-  // Drop any leftover key from the old brand-toggle days so it doesn't sit
-  // in users' localStorage forever.
-  try { localStorage.removeItem("lvn-brand"); } catch {}
+  // Drop leftover localStorage keys that no current code reads — the old UI
+  // wrote these, and `lvn-brand` is from the brand-toggle era. Removing them
+  // keeps localStorage tidy for returning users.
+  for (const key of ["lvn-brand", "lunch-vote-theme-pref", "lunch-vote-accent", "lunch-vote-view"]) {
+    try { localStorage.removeItem(key); } catch {}
+  }
 
   // Expose only what page scripts actually consume. Internal helpers
-  // (setUser, escape, avatar, toneFor, API, ACCENTS) stay closed-over inside
-  // this IIFE — adding them to window.LV would imply they're part of the
-  // module's interface, which they aren't.
+  // (setUser, avatar, toneFor, API, ACCENTS) stay closed-over inside this
+  // IIFE — adding them to window.LV would imply they're part of the module's
+  // interface, which they aren't.
   window.LV = {
     BRAND_META, ALERTS,
     getUser, ensureUser,

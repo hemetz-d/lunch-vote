@@ -1,5 +1,3 @@
-const DAYS = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"] as const;
-
 export function isoDate(d: Date): string {
   const y = d.getUTCFullYear();
   const m = String(d.getUTCMonth() + 1).padStart(2, "0");
@@ -25,10 +23,6 @@ export function weekdayDates(d: Date): string[] {
     x.setUTCDate(x.getUTCDate() + i);
     return isoDate(x);
   });
-}
-
-export function germanDay(i: number): string {
-  return DAYS[(i + 1) % 7]; // 0 -> Montag, 4 -> Freitag
 }
 
 // The date the app should show and act on. Monday–Friday → today. Sat/Sun →
